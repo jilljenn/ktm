@@ -1,4 +1,10 @@
 all:
+	xelatex dfm-kt-poster
+	# biber dfm-kt-poster
+	# xelatex dfm-kt-poster
+	open dfm-kt-poster.pdf
+
+ktm:
 	xelatex ktm-poster
 	biber ktm-poster
 	xelatex ktm-poster
