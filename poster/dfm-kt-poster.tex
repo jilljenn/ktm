@@ -136,46 +136,54 @@ Tokyo, Japan\\
         \end{itemize}
 
         \vspace{1cm}
-        \innerblock[]{Logistic Regression}{
+        \innerblock[]{Logistic Regression (LR)}{
             All students $i \in I$, questions $j \in J$ and metadata are encoded into sparse features $x$\\
             Each feature $k$ has a bias \alert{$w_k$}
             \[ \logit p(x) = \logit \Pr(\textsf{event } x \textnormal{ has positive outcome}) = \mu + \alert{w^T} x \]
 
-            \hfill $\Rightarrow$ \textnormal{ \textbf{really simple, ignores pairwise interactions}}
+            \hfill $\Rightarrow$ \textnormal{ \textbf{really simple, ignores pairwise interactions} ($d = 0$)}
         }
         Particular cases for user $i$ against token $j$:\\
-        Item response theory (IRT): $\logit{} p_{ij} = \alert{\theta_i} - \alert{d_j}$\\
-        Performance Factor Analysis (PFA): $\logit{} p_{ij} = \sum_{k \in \textnormal{KC}(j)} \alert{\beta_k} + \alert{\gamma_k} W_{ik} + \alert{\delta_k} F_{ik}$\\
+        Item response theory (IRT): \hfill $\logit{} p_{ij} = \alert{\theta_i} - \alert{d_j}$\\
+        Performance Factor Analysis (PFA): \hfill $\logit{} p_{ij} = \sum_{k \in \textnormal{KC}(j)} \alert{\beta_k} + \alert{\gamma_k} W_{ik} + \alert{\delta_k} F_{ik}$\\
         \vspace{1cm}
-        \innerblock[]{Factorization Machines}{
+        \innerblock[]{Factorization Machines (FM)}{
             All students $i \in I$ and questions $j \in J$ and past performance are encoded into $x$\\
-            All entities have a bias \alert{$w_k$} and features \alert{$\bm{v_k}$} to model pairwise relationships between them
+            All entities have a bias \alert{$w_k$} and features $\alert{\bm{v_k}} \in \R^d$ to model pairwise interactions
 
-            \[ \psi\left(p(x)\right) = \mu + \underbrace{\sum_{k = 1}^N \alert{w_k} x_k}_{\textnormal{logistic regression}} + \underbrace{\sum_{1 \leq k < l \leq N} x_k x_l \langle \alert{\bm{v_k}}, \alert{\bm{v_l}} \rangle}_{\textnormal{pairwise interactions}} \]
+            \[ \psi(p(x)) = \mu + \underbrace{\sum_{k = 1}^N \alert{w_k} x_k}_{\textnormal{logistic regression}} + \underbrace{\sum_{1 \leq k < l \leq N} x_k x_l \langle \alert{\bm{v_k}}, \alert{\bm{v_l}} \rangle}_{\textnormal{pairwise interactions}} \]
             \hfill $\Rightarrow$ \textnormal{ \textbf{converting sparse features to dense embeddings}}
         }
-        Particular cases:\\
-        Multidimensional Item Response Theory (MIRT): $\logit{} p_{ij}= \langle \alert{\bm{\theta_i}}, \alert{\bm{d_j}} \rangle + \alert{\delta_j}$\\
-        BFM (Bayesian Factorization Machines \cite{freudenthaler2011bayesian}) for classification
-        \begin{itemize}
-            \item If $\psi = \probit$, $w_k, v_{kf} \sim \N(\mu, 1/\lambda)$, $\mu \sim \N(0, 1)$, $\lambda \sim \Gamma(1, 1)$,\\
-            a \textbf{Gibbs sampler} allows to train efficiently KTM \cite{rendle2012factorization}
-        \end{itemize}
+        Particular case:\\
+        Multidimensional Item Response Theory (MIRT): \hfill $\logit{} p_{ij}= \langle \alert{\bm{\theta_i}}, \alert{\bm{d_j}} \rangle + \alert{\delta_j}$
     }
 
     \column{.52}
-    \block{Our proposal \autocite{guo2017deepfm}}{
-        \innerblock[]{Deep Factorization Machines}{
+    \block{Our proposal}{
+        % Use Deep \autocite{guo2017deepfm} and Bayesian \autocite{freudenthaler2011bayesian} Factorization Machines \autocite{rendle2012factorization} for this task.
+        \innerblock[]{Deep Factorization Machines (DeepFM)}{
             All students $i \in I$ and questions $j \in J$ and past performance are encoded into $x$\\
-            All entities have a bias \alert{$w_k$} and features \alert{$\bm{v_k}$} to model pairwise relationships between them
+            \textbf{FM:} All entities have a bias \alert{$w_k$} and features $\alert{\bm{v_k}} \in \R^d$ to model pairwise interactions\\
+            \textbf{Deep:} Train layers \alert{$W^{(\ell)}$} and \alert{$b^{(\ell)}$} for each $\ell = 1, \ldots, L$ \autocite{guo2017deepfm}
 
-            \begin{gather*}
-            \psi(p(x)) = y_{FM}(x) + y_{DNN}(x)\\
+            \[ \logit p(x) = y_{FM}(x) + y_{DNN}(x) \]
+            \begin{equation*}
+            \begin{aligned}[c]
             y_{FM}(x) = \mu + \sum_{k = 1}^N \alert{w_k} x_k + \sum_{1 \leq k < l \leq N} x_k x_l \langle \alert{\bm{v_k}}, \alert{\bm{v_l}} \rangle\\
-            y_{DNN}(x) = \ReLU(\alert{W^{(L)}} a^{(L)} + \alert{b^{(L)}})\\
-            a^{(\ell + 1)}(x) = \ReLU(\alert{W^{(\ell)}} a^{(\ell)} + \alert{b^{(\ell)}})\\
-            a^{0}(x) = (v_{user}, v_{token}, \ldots)
-            \end{gather*}
+            \end{aligned}
+            \quad
+            \begin{aligned}[c]
+            y_{DNN}(x) = \ReLU(\alert{W^{(L)}} a^{(L)}(x) + \alert{b^{(L)}})\\
+            a^{(\ell + 1)}(x) = \ReLU(\alert{W^{(\ell)}} a^{(\ell)}(x) + \alert{b^{(\ell)}})\\
+            a^{0}(x) = (\alert{\bm{v_{\texttt{user}}}}, \alert{\bm{v_{\texttt{token}}}}, \ldots, \alert{\bm{v_{\texttt{countries}}}})
+            \end{aligned}
+            \end{equation*}
+        }
+        \vspace{1cm}
+        \innerblock[]{Bayesian Factorization Machines (Bayesian FM)}{
+            \[ \probit p(x) = \mu + \sum_{k = 1}^N \alert{w_k} x_k + \sum_{1 \leq k < l \leq N} x_k x_l \langle \alert{\bm{v_k}}, \alert{\bm{v_l}} \rangle \]
+            Hyperpriors: $\alert{w_k}, \alert{v_{kf}} \sim \N(\alert{\mu_f}, 1/\alert{\lambda_f})$, $\alert{\mu_f} \sim \N(0, 1)$, $\alert{\lambda_f} \sim \Gamma(1, 1)$,\\
+            Trained using \textbf{Gibbs sampling} \autocite{freudenthaler2011bayesian,rendle2012factorization}
         }
     }
 
@@ -189,40 +197,41 @@ Tokyo, Japan\\
         \vspace{1cm}
 
         \begin{minipage}{0.6\linewidth}
-            Encoding users + items == IRT\\
-            Encoding users + skills + attempts == AFM\\
-            Encoding users + skills + wins + fails == PFA\bigskip\\
-
-            How much do we earn with each of these nested models?
+            IRT: \texttt{user} + \texttt{token}\\
+            first: \texttt{<discrete features>}\\
+            last: \texttt{<discrete features>} + \texttt{time} + \texttt{days}\\
+            pfa: \texttt{<discrete features>} + \texttt{wins} + \texttt{fails}
         \end{minipage}
-        \begin{minipage}{0.4\linewidth}
+        \begin{minipage}{0.3\linewidth}
             \includegraphics[width=\linewidth]{figures/aip.png}
         \end{minipage}
     }
 
 \end{columns}
-\begin{columns}
-\column{.55}
-\block{Results on large-scale Duolingo dataset}{
+
+\block{Results in AUC on large-scale Duolingo dataset}{
     \centering
-    \input{tables/results-fr_en}
-    \input{tables/results-es_en}
-    \input{tables/results-en_es}
+    \input{tables/results-fr}
+    \input{tables/results-es}
+    \input{tables/results-en}
 }
 
-
-\column{.45}
-\block{Better models found}{
+\begin{columns}
+\column{.33}
+\block{Take home message}{
     \begin{itemize}
     \item Pairwise interactions are useful
     \item Deep does not help much
     \item Time and days harm
     \end{itemize}
+    \vspace{-1cm}
 }
 \block{Optimizing Human Learning}{
     We are organizing a workshop in Montréal on \textbf{June 12}:\\
-    CFP open on \url{humanlearn.io}
+    Proceedings on \url{humanlearn.io}
 }
+
+\column{.67}
 \block{References}{
     \printbibliography[heading=none]
 }
