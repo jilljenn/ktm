@@ -5,8 +5,13 @@ __pycache__
 *.bcf
 *.blg
 *.log
+*.nav
 *.out
+*.snm
+*.toc
+*.vrb
 *.xml
+tuto.tex
 assistments09
 libfm
 venv

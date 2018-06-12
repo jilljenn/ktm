@@ -1,0 +1,13 @@
+\begin{tabular}{lr@{\hspace{2mm}}r@{\hspace{2mm}}r@{\hspace{2mm}}r@{\hspace{2mm}}r@{\hspace{2mm}}r@{\hspace{2mm}}r@{\hspace{2mm}}r@{\hspace{2mm}}rrr}
+\toprule
+& \multicolumn{3}{c}{Skills} & \multicolumn{3}{c}{Wins} & \multicolumn{3}{c}{Fails}\\
+\cmidrule{2-4} \cmidrule{5-7} \cmidrule{8-10}
+{} &  $S_0$ &  $S_1$ &  $S_2$ &  $S_0$ &  $S_1$ &  $S_2$ &  $S_0$ &  $S_1$ &  $S_2$ &    $\bm{y_\textnormal{pred}}$ &  $\bm{y}$ \\
+\midrule
+User 1 Item 1 OK  &  0 &  1 &  0 &  0 &  0 &  0 &  0 &  0 &  0 &  0.544 &    1 \\
+User 1 Item 2 NOK &  0 &  0 &  1 &  0 &  0 &  0 &  0 &  0 &  0 &  0.381 &    0 \\
+User 2 Item 1 \alert{NOK} &  0 &  1 &  0 &  0 &  0 &  0 &  0 &  0 &  0 &  \alert{0.544} &    \alert0 \\
+User 2 Item 1 \alert{OK}  &  0 &  1 &  0 &  0 &  0 &  0 &  0 &  1 &  0 &  \alert{0.633} &    \alert1 \\
+User 2 Item 2 NOK &  0 &  0 &  1 &  0 &  0 &  0 &  0 &  0 &  0 &  0.381 &    0 \\
+\bottomrule
+\end{tabular}

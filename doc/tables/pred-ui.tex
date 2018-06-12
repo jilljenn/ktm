@@ -1,0 +1,13 @@
+\begin{tabular}{lrrrrrrrr}
+\toprule
+& \multicolumn{3}{c}{Users} & \multicolumn{3}{c}{Items}\\
+\cmidrule{2-4} \cmidrule{5-7}
+{} &  $U_0$ &  $U_1$ &  $U_2$ &  $I_0$ &  $I_1$ &  $I_2$ &    $\bm{y_\textnormal{pred}}$ &  $\bm{y}$ \\
+\midrule
+User 1 Item 1 OK  &  0 &  1 &  0 &  0 &  1 &  0 &  0.575135 &      1 \\
+User 1 Item 2 NOK &  0 &  1 &  0 &  0 &  0 &  1 &  0.395036 &      0 \\
+User 2 Item 1 \alert{NOK} &  0 &  0 &  1 &  0 &  1 &  0 &  \alert{0.545417} &      \alert0 \\
+User 2 Item 1 \alert{OK}  &  0 &  0 &  1 &  0 &  1 &  0 &  \alert{0.545417} &      \alert1 \\
+User 2 Item 2 NOK &  0 &  0 &  1 &  0 &  0 &  1 &  0.366595 &      0 \\
+\bottomrule
+\end{tabular}
