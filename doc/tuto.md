@@ -1,6 +1,6 @@
-% Knowledge Tracing Machines\newline Towards an unification of DKT, IRT & PFA
-% Jill-Jênn Vie
-% Optimizing Human Learning, June 12, 2018
+% Knowledge Tracing Machines:\newline Families of models\newline for predicting student performance
+% Jill-Jênn Vie\newline RIKEN Center for Advanced Intelligence Project, Tokyo\newline\newline\includegraphics[width=3cm]{figures/aip.png}
+% Optimizing Human Learning, June 12, 2018\newline Polytechnique Montréal, June 18, 2018
 ---
 theme: Frankfurt
 section-titles: false
@@ -12,6 +12,9 @@ header-includes:
     - \usepackage{bm}
     - \DeclareMathOperator\logit{logit}
     - \def\ReLU{\textnormal{ReLU}}
+biblatexoptions:
+    - maxbibnames=99
+    - maxcitenames=5
 ---
 
 # Introduction
@@ -22,9 +25,12 @@ header-includes:
 
 A population of students answering questions
 
+- Events: "Student $i$ answered question $j$ correctly/incorrectly"
+
 ### Goal
 
-- Measure their knowledge
+- Learn the difficulty of questions automatically from data
+- Measure the knowledge of students
 - Potentially optimize their learning
 
 ### Assumption
@@ -33,9 +39,14 @@ Good model for prediction $\rightarrow$ Good adaptive policy for teaching
 
 ## Learning outcomes of this tutorial
 
-> - Logistic regression is amazing \vspace{1cm}
-> - Factorization machines are even more amazing \vspace{1cm}
-> - Recurrent neural networks are boring \footnotesize (but useful)
+- \alert{Logistic regression} is amazing
+    - Unidimensional
+    - Takes IRT, PFA as special cases\vspace{1cm}
+- \alert{Factorization machines} are even more amazing
+    - Multidimensional
+    - Take MIRT as special case\vspace{1cm}
+- It makes sense to consider \alert{deep neural networks}
+    - What does deep knowledge tracing model exactly?
 
 ## Families of models
 
@@ -47,7 +58,7 @@ Good model for prediction $\rightarrow$ Good adaptive policy for teaching
 - Recurrent Neural Networks
     - Deep Knowledge Tracing [@piech2015deep]
 
-\vspace{1cm}
+\vspace{5mm}
 
 \fullcite{rendle2012factorization}
 
@@ -77,7 +88,9 @@ Cold-start: some new students are not in the train set
 \end{column}
 \begin{column}{0.4\linewidth}
 \centering
-\input{tables/dummy-ui}
+\input{tables/dummy-ui}\vspace{5mm}
+
+\texttt{dummy.csv}
 \end{column}
 \end{columns}
 
@@ -96,6 +109,8 @@ Pr(\textnormal{User $i$ Item $j$ OK}) & = \sigma(\theta_i + e_j)\\
 
 Learn $\alert{\bm{w}}$ such that $\logit Pr(\bm{x}) = \langle \alert{\bm{w}}, \bm{x} \rangle$
 
+Usually with L2 regularization: ${||\bm{w}||}_2^2$ penalty $\leftrightarrow$ Gaussian prior
+
 ## Graphically: IRT as logistic regression
 
 Encoding of "User $i$ answered Item $j$":
@@ -106,31 +121,15 @@ Encoding of "User $i$ answered Item $j$":
 
 $$ \logit Pr(\textnormal{User $i$ Item $j$ OK}) = \langle \bm{w}, \bm{x} \rangle = \theta_i + e_j $$
 
-## Time to experiment
-
-Cf. `README.md` @ `https://github.com/jilljenn/ktm`
-
-\vspace{1cm}
-
-    git clone https://github.com/jilljenn/ktm
-    cd ktm
-    python3 -m venv venv   # Python 2 OK
-    . venv/bin/activate
-    pip install -r requirements.txt
-
-    git clone https://github.com/srendle/libfm
-    cd libfm
-    git reset --hard 91f8504a15120ef6815d6e10cc7dee42eebaab0f
-    make all
-
 ## Encoding
 
 `python encode.py --users --items`  
-`# Creates data/dummy/X-ui.npz`
 
 \centering
 
 \input{tables/show-ui}
+
+`data/dummy/X-ui.npz`
 
 \raggedright
 Then logistic regression can be run on the sparse features:
@@ -155,6 +154,8 @@ Keep track of what the student has done before:
 
 \input{tables/dummy-uiswf}
 
+`data/dummy/data.csv`
+
 ## Task 2: Performance Factor Analysis
 
 $W_{ik}$: how many successes of user $i$ over skill $k$ ($F_{ik}$: #failures)
@@ -166,6 +167,8 @@ $$ \logit Pr(\textnormal{User $i$ Item $j$ OK}) = \sum_{\textnormal{Skill } k \t
 
 \centering
 \input{tables/show-swf}
+
+`data/dummy/X-swf.npz`
 
 ## Better!
 
@@ -185,7 +188,7 @@ $$ \logit Pr(\textnormal{User $i$ Item $j$ OK}) = \sum_{\textnormal{Skill } k \t
 
 ## Here comes a new challenger
 
-How to model \alert{side information} in recommender systems?
+How to model \alert{side information} in, say, recommender systems?
 
 ### Logistic Regression
 
@@ -195,7 +198,7 @@ Learn a \alert{bias} for each feature (each user, item, etc.)
 
 Learn a \alert{bias} and an \alert{embedding} for each feature
 
-## The power of embeddings
+## What can be done with embeddings?
 
 \centering
 
@@ -233,7 +236,7 @@ $$ \logit p(\bm{x}) = \mu + \underbrace{\sum_{k = 1}^N \alert{w_k} x_k}_{\textno
 \begin{itemize}
 \item Multidimensional item response theory: $\logit p = \langle \bm{u_i}, \bm{v_j} \rangle + e_j$
 \item SPARFA: $\bm{v_j} > \bm{0}$ and $\bm{v_j}$ sparse
-\item GenMA: $\bm{v_j}$ is constrained by the zeroes of a q-matrix
+\item GenMA: $\bm{v_j}$ is constrained by the zeroes of a q-matrix $(q_{ij})_{i, j}$
 \end{itemize}
 \end{block}
 
@@ -241,6 +244,23 @@ $$ \logit p(\bm{x}) = \mu + \underbrace{\sum_{k = 1}^N \alert{w_k} x_k}_{\textno
 \fullcite{lan2014sparse}
 
 \fullcite{Vie2016ECTEL}
+
+## Tradeoff expressiveness/interpretability
+
+\centering
+
+\begin{tabular}{@{}ccccc@{}} \toprule
+NLL & $\logit p$ & 4 q & 7 q & 10 q\\ \midrule
+Rasch & $\theta_i + e_j$ & 0.469 (79\%) & 0.457 (79\%) & 0.446 (79\%)\\
+DINA & $1 - s_j$ or $g_j$ & 0.441 (80\%) & 0.410 (82\%) & 0.406 (82\%)\\
+MIRT & $\langle \bm{u_i}, \bm{v_j} \rangle + e_j$ & 0.368 (83\%) & 0.325 (86\%) & 0.316 (86\%)\\
+GenMA & $\langle \bm{u_i}, \bm{\tilde{q}_j} \rangle + e_j$ & 0.459 (79\%) & 0.355 (85\%) & 0.294 (88\%)\\ \bottomrule
+\end{tabular}
+
+<!-- ![](figures/fraction-mean.pdf){width=50%}
+![](figures/timss-mean.pdf){width=50%} -->
+
+\includegraphics[width=0.53\linewidth]{figures/fraction-mean.pdf}\includegraphics[width=0.53\linewidth]{figures/timss-mean.pdf}
 
 ## Assistments 2009 dataset
 
@@ -271,9 +291,73 @@ y_{DNN}(\bm{x}) & = \ReLU(\alert{W^{(L)}} \bm{a}^{(L)}(\bm{x}) + \alert{\bm{b}^{
 
 $$ \logit p(\bm{x}) = y_{FM}(\bm{x}) + y_{DNN}(\bm{x}) $$
 
-When trained, performance was lower than Bayesian FMs.
+<!-- When trained, performance was lower than Bayesian FMs. -->
 
 \fullcite{Duolingo2018}
+
+## Comparison
+
+- FM: $y_{FM}$ factorization machine with $\lambda = 0.01$
+- Deep: $y_{DNN}$: multilayer perceptron
+- DeepFM: $y_{DNN} + y_{FM}$ with shared embedding
+- Bayesian FM: $\alert{w_k}, \alert{v_{kf}} \sim \mathcal{N}(\alert{\mu_f}, 1/\alert{\lambda_f})$  
+$\alert{\mu_f} \sim \mathcal{N}(0, 1)$, $\alert{\lambda_f} \sim \Gamma(1, 1)$ (trained using Gibbs sampling)
+
+### Various types of side information
+
+- first: `<discrete>` (`user`, `token`, `countries`, etc.)
+- last: `<discrete>` + `<continuous>` (`time` + `days`)
+- pfa: `<discrete>` + `wins` + `fails`
+
+## Duolingo dataset
+
+![](figures/duolingo.png)
+
+![](figures/duolingo2.png)
+
+## Results
+
+\begin{tabular}{cccccccc}
+\toprule
+  Model &  $d$ &     epoch &  train &  first &   last &    pfa \\
+\midrule
+Bayesian FM &   20 &   500/500 &     -- &  0.822 &     -- &     -- \\
+Bayesian FM &   20 &   500/500 &     -- &     -- &  0.817 &     -- \\
+     DeepFM &   20 &   15/1000 &  0.872 &  0.814 &     -- &     -- \\
+Bayesian FM &   20 &   100/100 &     -- &     -- &  0.813 &     -- \\
+         FM &   20 &   20/1000 &  0.874 &  0.811 &     -- &     -- \\
+Bayesian FM &   20 &   500/500 &     -- &     -- &     -- &  0.806 \\
+         FM &   20 &   21/1000 &  0.884 &     -- &     -- &  0.805 \\
+         FM &   20 &   37/1000 &  0.885 &     -- &    0.8 &     -- \\
+     DeepFM &   20 &   77/1000 &   0.89 &     -- &  0.792 &     -- \\
+       Deep &   20 &    7/1000 &  0.826 &  0.791 &     -- &     -- \\
+       Deep &   20 &  321/1000 &  0.826 &     -- &   0.79 &     -- \\
+         LR &    0 &     50/50 &     -- &     -- &     -- &  0.789 \\
+         LR &    0 &     50/50 &     -- &  0.783 &     -- &     -- \\
+         LR &    0 &     50/50 &     -- &     -- &  0.783 &     -- \\
+\bottomrule
+\end{tabular}
+
+## Duolingo ranking
+
+\centering
+
+\begin{tabular}{cccc} \toprule
+Rank & Team & Algo & AUC\\ \midrule
+1 & SanaLabs & RNN + GBDT & .857\\
+2 & singsound & RNN & .854\\
+3 & NYU & GBDT & .854\\
+4 & CECL & LR + L1 (13M feat.) & .843\\
+5 & TMU & RNN & .839\\ \midrule
+7 & JJV & Bayesian FM & .822\\
+9 & JJV & DeepFM & .814\\
+17 & JJV & LR + L2 & .789\\ \midrule
+18 & Duolingo & LR & .771\\ \bottomrule
+\end{tabular}
+
+\raggedright
+\small
+\fullcite{Settles2018}
 
 ## What 'bout recurrent neural networks?
 
@@ -295,17 +379,21 @@ Deep Knowledge Tracing: model the problem as sequence prediction
 
 ![](figures/dkt2.pdf)
 
-## Drawback
+## Drawback of Deep Knowledge Tracing
 
 DKT does not model individual differences.
+
+Actually, Wilson even managed to beat DKT with (1-dim!) IRT.
 
 By estimating on-the-fly the student's learning ability, we managed to get a better model.
 
 \centering
 \input{tables/results-dkt}
 
-\raggedright
+\raggedright \small
 \fullcite{Minn2018}
+
+# Conclusion
 
 ## Take home message
 
@@ -317,8 +405,16 @@ By estimating on-the-fly the student's learning ability, we managed to get a bet
 
 ## Any suggestions are welcome!
 
+Feel free to chat:
+
+\centering
 `vie@jill-jenn.net`
 
+\raggedright
+All code:
+
+\centering
 `github.com/jilljenn/ktm`
 
-Questions?
+\raggedright
+Do you have any questions?
