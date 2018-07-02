@@ -346,13 +346,13 @@ Bayesian FM &   20 &   500/500 &     -- &     -- &     -- &  0.806 \\
 Rank & Team & Algo & AUC\\ \midrule
 1 & SanaLabs & RNN + GBDT & .857\\
 2 & singsound & RNN & .854\\
-3 & NYU & GBDT & .854\\
+2 & NYU & GBDT & .854\\
 4 & CECL & LR + L1 (13M feat.) & .843\\
 5 & TMU & RNN & .839\\ \midrule
-7 & JJV & Bayesian FM & .822\\
-9 & JJV & DeepFM & .814\\
-17 & JJV & LR + L2 & .789\\ \midrule
-18 & Duolingo & LR & .771\\ \bottomrule
+7 (off) & JJV & Bayesian FM & .822\\
+8 (off) & JJV & DeepFM & .814\\
+10 & JJV & DeepFM & .809\\ \midrule
+15 & Duolingo & LR & .771\\ \bottomrule
 \end{tabular}
 
 \raggedright
