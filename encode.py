@@ -36,11 +36,12 @@ def df_to_sparse(df, config, active_features):
     X = {}
     X['users'] = onehotize(df['user'], config['nb_users'])
     X['items'] = onehotize(df['item'], config['nb_items'])
-    X['skills'] = onehotize(df['skill'], config['nb_skills'])
-    X['wins'] = X['skills'].copy()
-    X['wins'].data = df['wins']
-    X['fails'] = X['skills'].copy()
-    X['fails'].data = df['fails']
+    if 'skill' in df:
+        X['skills'] = onehotize(df['skill'], config['nb_skills'])
+        X['wins'] = X['skills'].copy()
+        X['wins'].data = df['wins']
+        X['fails'] = X['skills'].copy()
+        X['fails'].data = df['fails']
     X_train = hstack([X[agent] for agent in active_features]).tocsr()
     y_train = df['correct'].values
     return X_train, y_train

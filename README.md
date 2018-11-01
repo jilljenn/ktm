@@ -2,6 +2,7 @@
 
 - Presented at the [AIP-IIS-MLGT](https://sites.google.com/view/aip-fau-mlgt-2018/home) workshop at Georgia Tech, Atlanta, GA on March 8, 2018.
 - Presented at the [BEA](https://www.cs.rochester.edu/~tetreaul/naacl-bea13.html) workshop at New Orleans, LA on June 5, 2018.
+- To be presented at the [AAAI 2019](https://aaai.org/Conferences/AAAI-19/) conference in Honolulu, Hawaii on January 27, 2019.
 
 See [poster](https://github.com/jilljenn/ktm/blob/master/poster/ktm-poster.pdf), [another poster](https://github.com/jilljenn/ktm/blob/master/poster/dfm-kt-poster.pdf) and [article](https://arxiv.org/abs/1805.00356) on arXiv:
 

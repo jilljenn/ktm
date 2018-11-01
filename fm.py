@@ -1,5 +1,5 @@
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, log_loss
 from scipy.sparse import load_npz
 import pywFM
 import argparse
@@ -41,5 +41,6 @@ print('Test was:', y_test)
 print('Test ACC:', np.mean(y_test == np.round(y_pred_test)))
 try:
     print('Test AUC', roc_auc_score(y_test, y_pred_test))
+    print('Test NLL', log_loss(y_test, y_pred_test))
 except ValueError:
     pass

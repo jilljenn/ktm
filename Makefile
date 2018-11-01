@@ -30,3 +30,6 @@ fullclean:
 
 tmp:
 	pandoc README.md -o README.html
+
+movie:
+	python fm.py --d 20 data/movie100k/X-ui.npz
