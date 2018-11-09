@@ -4,15 +4,14 @@
 - Presented at the [BEA](https://www.cs.rochester.edu/~tetreaul/naacl-bea13.html) workshop at New Orleans, LA on June 5, 2018.
 - To be presented at the [AAAI 2019](https://aaai.org/Conferences/AAAI-19/) conference in Honolulu, Hawaii on January 27, 2019.
 
-See [poster](https://github.com/jilljenn/ktm/blob/master/poster/ktm-poster.pdf), [another poster](https://github.com/jilljenn/ktm/blob/master/poster/dfm-kt-poster.pdf) and [article](https://arxiv.org/abs/1805.00356) on arXiv:
+See [article](https://arxiv.org/abs/1811.03388) on arXiv:
 
-    @inproceedings{vie2018deep,
-      title={Deep Factorization Machines for Knowledge Tracing},
-      author={Vie, Jill-J{\^e}nn},
-      booktitle={Proceedings of the Thirteenth Workshop on Innovative Use of NLP for Building Educational Applications},
-      pages={370--373},
-      year={2018}
-    }
+    @inproceedings{Vie2019,
+      Author = {{Vie}, Jill-J{\^e}nn and {Kashima}, Hisashi},
+      Booktitle = {To appear at the 33th AAAI Conference on Artificial Intelligence},
+      Title = {{Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing}},
+      Url = {http://arxiv.org/abs/1811.03388},
+      Year = 2019}
 
 Authors: [Jill-Jênn Vie](https://jilljenn.github.io), [Hisashi Kashima](http://www.geocities.co.jp/kashi_pong/index_e.html)
 
