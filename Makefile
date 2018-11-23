@@ -33,3 +33,10 @@ tmp:
 
 movie:
 	python fm.py --d 20 data/movie100k/X-ui.npz
+
+libfm:
+	git clone https://github.com/srendle/libfm
+	cd libfm && git reset --hard 91f8504a15120ef6815d6e10cc7dee42eebaab0f && make all
+
+README.html: README.md
+	pandoc README.md -o README.html
