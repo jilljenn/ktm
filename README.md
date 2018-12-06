@@ -5,6 +5,8 @@
 
 See our article: [Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing](https://arxiv.org/abs/1811.03388).
 
+Check our slides: [PDF](http://jiji.cat/slides/aaai2019-ktm-slides.pdf) (comments are welcome!).
+
     @inproceedings{Vie2019,
       Author = {{Vie}, Jill-J{\^e}nn and {Kashima}, Hisashi},
       Booktitle = {Proceedings of the 33th {AAAI} Conference on Artificial Intelligence},
@@ -29,7 +31,7 @@ The tutorial makes you play with the models to assess **weak generalization**. T
     . venv/bin/activate
     pip install -r requirements.txt  # Will install numpy, scipy, pandas, scikit-learn, pywFM
 
-If you also want to get the factorization machines running (KTM for $d > 0$), you should also do:
+If you also want to get the factorization machines running (KTM for *d* > 0), you should also do:
 
     make libfm
 
@@ -42,7 +44,21 @@ You can also download the [Assistments 2009 dataset](http://jiji.cat/weasel2018/
 
     make big
 
-To understand what is going on, look at the [Makefile](Makefile).
+To understand what is going on, look at the [Makefile](Makefile). Basically there are two steps:
+
+### Encoding data into sparse features
+
+    python encode.py --dataset dummy --skills --wins --fails  # Will encode PFA sparse features into X-swf.npz
+
+### Running a ML model
+
+For logistic regression:
+
+    python lr.py data/dummy/X-swf.npz
+
+For factorization machines of size *d* = 5:
+
+    python fm.py --d 5 data/dummy/X-swf.npz
 
 ## Results
 
