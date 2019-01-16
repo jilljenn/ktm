@@ -5,6 +5,7 @@ import pywFM
 import argparse
 import numpy as np
 import os
+import sys
 
 
 # Location of libFM's compiled binary file
@@ -15,15 +16,26 @@ parser = argparse.ArgumentParser(description='Run FM')
 parser.add_argument('X_file', type=str, nargs='?')
 parser.add_argument('--iter', type=int, nargs='?', default=200)
 parser.add_argument('--d', type=int, nargs='?', default=20)
+parser.add_argument('--subset', type=int, nargs='?', default=0)
 options = parser.parse_args()
 
 X_file = options.X_file
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
+folder = os.path.dirname(X_file)
 
 X = load_npz(X_file)
 y = np.load(y_file)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
-                                                    shuffle=False)
+
+try:
+    i_train = np.load(os.path.join(folder, 'i_train{}.npy'.format(options.subset)))
+    i_test = np.load(os.path.join(folder, 'i_test{}.npy'.format(options.subset)))
+    X_train = X[i_train]
+    y_train = y[i_train]
+    X_test = X[i_test]
+    y_test = y[i_test]
+except:
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
+                                                        shuffle=False)
 
 params = {
     'task': 'classification',
@@ -35,6 +47,7 @@ params = {
 fm = pywFM.FM(**params)
 model = fm.run(X_train, y_train, X_test, y_test)
 y_pred_test = np.array(model.predictions)
+np.save(os.path.join(folder, 'y_pred{}.npy'.format(options.subset)), y_pred_test)
 
 print('Test predict:', y_pred_test)
 print('Test was:', y_test)
