@@ -1,5 +1,10 @@
-\documentclass[25pt, a0paper,
+\documentclass[25pt,
 margin=0mm, innermargin=15mm, blockverticalspace=5mm, colspace=15mm, subcolspace=1mm]{tikzposter}
+\geometry{paperheight=42in,paperwidth=28in}
+\makeatletter
+\setlength{\TP@visibletextwidth}{\textwidth-2\TP@innermargin}
+\setlength{\TP@visibletextheight}{\textheight-2\TP@innermargin}
+\makeatother
 \usepackage{trace}
 \usepackage{amsmath}
 \usepackage{booktabs}
@@ -30,7 +35,7 @@ margin=0mm, innermargin=15mm, blockverticalspace=5mm, colspace=15mm, subcolspace
     citecolor={blue!80!black},
 }
 \newcommand{\email}[1]{\href{mailto:#1}{\textsf{#1}}}
-\title{\parbox{\linewidth}{\begin{center}\textbf{Knowledge Tracing Machines}\end{center}}}
+\title{\parbox{\linewidth}{\begin{center}\textbf{Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing}\end{center}}}
 \author{\centering
   \begin{tabular}{cc}
     \textbf{Jill-Jênn Vie} & \textbf{Hisashi Kashima} \\
@@ -48,7 +53,7 @@ Tokyo, Japan & Kyoto, Japan\\
    \begin{minipage}{0.98\linewidth}
         \centering
         \color{titlefgcolor}
-        {\bfseries \Huge \sc \@title \par}
+        {\bfseries \huge \sc \@title \par}
         \vspace*{1em}
         {\Large
           \@author \par}
@@ -120,104 +125,112 @@ Tokyo, Japan & Kyoto, Japan\\
     \column{.48}
     \block[roundedcorners=40]{Problem: Knowledge Tracing}{
         We want to \alert{predict the performance} of students over questions.\\
-        Each student can attempt a question multiple times, and learns in-between.\\
+        $\simeq$ collaborative filtering + \parbox[t]{0.7\linewidth}{\vspace{-0.55\baselineskip}\begin{sidebox}
+            students can attempt a question multiple times\\
+            students can learn between attempts
+            \end{sidebox}}
         \textbf{Fit:} Ordered triplets $(i, j, o) \in I \times J \times \{0, 1\}$\\
         $\Rightarrow$ Student $i$ attempted question $j$ and got it correct/incorrect.\\
         \textbf{Predict:} $(i, j, ?)$ for new triplets.
     }
     \block[roundedcorners=40]{Existing Models}{
         \begin{itemize}
-            \item \textbf{Prediction of sequences}: Bayesian Knowledge Tracing (BKT $:=$ HMM)\\ Deep Knowledge Tracing (DKT $:=$ LSTM) \autocite{piech2015deep}
-            \item \textbf{Factor Analysis}: Item Response Theory (IRT), Performance Factor Analysis (PFA)
+            \item \textbf{Prediction of sequences}: Bayesian or Deep Knowledge Tracing \autocite{piech2015deep}
+            \item \textbf{Factor Analysis}: Item Response Theory, Performance Factor Analysis
 
-            \[ \textnormal{BKT} < \textnormal{PFA} \simeq^{\textnormal{\autocite{xiong2016going}}} \textnormal{DKT} \leq^{\textnormal{\cite{wilson2016back}}} \textnormal{IRT } \alert{\leq^{\textnormal{[this poster]}} \textnormal{KTM}} \]
+            \[ \underbrace{\textnormal{BKT}}_\textnormal{HMM} < \textnormal{PFA} \simeq^{\textnormal{\autocite{xiong2016going}}} \underbrace{\textnormal{DKT}}_\textnormal{LSTM} \leq^{\textnormal{\cite{wilson2016back}}} \textnormal{IRT } \alert{\leq^{\textnormal{[this poster]}} \textnormal{KTM}} \]
 
         \end{itemize}
 
         \vspace{1cm}
-        \innerblock[]{Item Response Theory}{
+        \innerblock[]{Item Response Theory (IRT)}{
             Students $i \in I$ have unknown level \alert{$\theta_i$}\\
             Questions $j \in J$ have unknown difficulty \alert{$d_j$}
             \[ \logit p_{ij} = \logit \Pr(\textsf{Student } i \textnormal{ answers correctly } \textsf{question } j) = \alert{\theta_i} - \alert{d_j} \]
 
             \hfill $\Rightarrow$ \textnormal{ \textbf{really simple, ignores skills \& multiple attempts}}
         }
-        Multidimensional counterpart (MIRT): $\logit{} p_{ij}= \langle \bm{\theta_i}, \bm{d_j} \rangle + \delta_j$
+        Multidimensional item response theory (MIRT): $\logit{} p_{ij}= \langle \bm{\theta_i}, \bm{d_j} \rangle + \delta_j$
         \vspace{1cm}
-        \innerblock[]{Performance factor analysis}{
-            Students $i \in I$ have unknown level \alert{$\theta_i$}, $W_{ik}$ prior wins and $F_{ik}$ fails over skill $k$\\
-            Questions $j \in J$ have requirements $\textnormal{KC}(j) \subseteq K$\\
-            Skills $k \in K$ have bias \alert{$\beta_k$} and opportunities to be learned after win \alert{$\gamma_k$} and fail \alert{$\delta_k$}
+        \innerblock[]{Performance factor analysis (PFA)}{
+            Students $i \in I$ have level \alert{$\theta_i$}, $W_{ik}$ wins and $F_{ik}$ fails over skill $k$\\
+            Questions $j \in J$ have known requirements $\textnormal{KC}(j) \subseteq K$\\
+            Skills $k \in K$ have bias \alert{$\beta_k$} and bonus after win \alert{$\gamma_k$} and fail \alert{$\delta_k$}
 
             \[ \logit{} p_{ij}= \alert{\theta_i} + \sum_{k \in \textnormal{KC}(j)} \alert{\beta_k} + \alert{\gamma_k} W_{ik} + \alert{\delta_k} F_{ik} \]
 
             \hfill $\Rightarrow$ \textnormal{ \textbf{ignores item difficulty}}
         }
-        Additive Factor Model (AFM): only consider attempts of student $i$ over skill $k$ ($\gamma_k = \delta_k$)
+        Additive Factor Model (AFM): only consider attempts (i.e., $\gamma_k = \delta_k$)
     }
 
     \column{.52}
     \block{Our proposal}{
-        \innerblock[]{Knowledge Tracing Machines}{
-            All students $i \in I$ and questions $j \in J$ and past performance are encoded into $x$ (entities)\\
-            All entities have a bias \alert{$w_k$} and features \alert{$\bm{v_k}$} to model the pairwise relationships between them
+        \innerblock[]{Knowledge Tracing Machines (KTM)}{
+            Students $i \in I$, questions $j \in J$ and \alert{side information} are encoded into $\bm{x}$\\
+            All entities have a bias \alert{$w_k$} and embedding \alert{$\bm{v_k}$} to model pairwise relationships:
 
-            \[ \psi(p(x)) = \mu + \sum_{k = 1}^N \alert{w_k} x_k + \sum_{1 \leq k < l \leq N} x_k x_l \langle \alert{\bm{v_k}}, \alert{\bm{v_l}} \rangle \]
-
+            \[ \probit p(\bm{x}) = \mu + \underbrace{\sum_{k = 1}^N \alert{w_k} x_k}_\textnormal{logistic regression} + \underbrace{\sum_{1 \leq k < l \leq N} x_k x_l \langle \alert{\bm{v_k}}, \alert{\bm{v_l}} \rangle}_\textnormal{pairwise relationships} \]
         }
-        KTM $:=$ BFM (Bayesian Factorization Machines \cite{freudenthaler2011bayesian}) for classification
-        \begin{itemize}
-            \item \textbf{KTM} take IRT, MIRT, PFA as special cases
-            \item If $\psi = \probit$, $w_k, v_{kf} \sim \N(\mu, 1/\lambda)$, $\mu \sim \N(0, 1)$, $\lambda \sim \Gamma(1, 1)$,\\
-            a \textbf{Gibbs sampler} allows to train efficiently KTM \cite{rendle2012factorization}
-        \end{itemize}
+        E.g. $\psi = \probit, w_k, v_{kf} \sim \N(\mu, 1/\lambda)$, $\mu \sim \N(0, 1)$, $\lambda \sim \Gamma(1, 1)$\\    
+        Factorization machine trained using \textbf{Gibbs sampling} \cite{rendle2012factorization} or variational inference\vspace{-1cm}
     }
 
-    \block{Encoding of entities}{
-        Unsupervised problem becomes a supervised problem:
+    \block{Encoding data into sparse features}{
+        \begin{minipage}{0.46\linewidth}
+            \includegraphics[width=\linewidth]{figures/fm.pdf}
+%            If $\psi = \probit$, $w_k, v_{kf} \sim \N(\mu, 1/\lambda)$,\\
+  %          $\mu \sim \N(0, 1)$, $\lambda \sim \Gamma(1, 1)$\\
+  %          Training using 
+        \end{minipage} \hfill $\rightarrow$ \hfill
+        \begin{minipage}{0.46\linewidth}
+            \hfill \includegraphics[width=\linewidth]{figures/fm2.pdf}
+        \end{minipage}
 
-        \vspace{5mm}
         \begin{center}
-        \input{tables/fm-poster}
+        \input{tables/fm}
         \end{center}
         \vspace{1cm}
 
-        \begin{minipage}{0.6\linewidth}
+        \begin{minipage}{0.7\linewidth}
+            \textbf{KTM} take IRT, MIRT, PFA as special cases\\
             Encoding users + items == IRT\\
             Encoding users + skills + attempts == AFM\\
-            Encoding users + skills + wins + fails == PFA\bigskip\\
-
-            What is the influence of the data over the model?            
+            Encoding users + skills + wins + fails == PFA
         \end{minipage}
-        \begin{minipage}{0.4\linewidth}
-            \includegraphics[width=\linewidth]{figures/aip.png}
+        \begin{minipage}{0.29\linewidth}
+            \includegraphics[width=\linewidth]{figures/ktm.pdf}
         \end{minipage}
     }
 
 \end{columns}
 \begin{columns}
-\column{.55}
+\column{.61}
 \block{Various, large-scale educational datasets}{
 
-    \input{tables/datasets-poster}\vspace{1cm}\\
-    \includegraphics[width=0.50\linewidth]{figures/assistments0-poster.pdf}
-    \includegraphics[width=0.50\linewidth]{figures/berkeley0-poster.pdf}\vspace{1cm}\\
-    \input{tables/summary-poster}
+    \input{tables/datasets}\vspace{1cm}\\
+    \begin{minipage}{0.4\linewidth}
+    \includegraphics[width=\linewidth]{figures/barchart.pdf}
+    \end{minipage}
+    \begin{minipage}{0.6\linewidth}
+    \input{tables/assistments42-full-new}
+    \end{minipage}
+    \vspace{1cm}\\
+    \input{tables/summary-now}
 }
 
 
-\column{.45}
-\block{Better models found}{
+\column{.39}
+\block{Findings}{
     \begin{itemize}
     \item It is better to learn a item bias
-    \item Bigger dimensions do not help much, sometimes harm
-    \item IRT is simple yet competitive
+    \item Side information helps more than latent dimension
+    \item We can handle multiple skills per item
+    \item We can visualize learning:
     \end{itemize}
-    \input{tables/berkeley0-table-poster}
-}
-\block{Optimizing Human Learning}{
-    We are organizing a workshop in Montréal on \textbf{June 12}:\\
-    CFP open on \url{humanlearn.io}
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/viz.pdf}
+    \vspace{-2cm}
 }
 \block{References}{
     \printbibliography[heading=none]

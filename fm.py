@@ -1,6 +1,6 @@
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, log_loss
-from scipy.sparse import load_npz
+from scipy.sparse import load_npz, vstack
 import pywFM
 import argparse
 import numpy as np
@@ -22,18 +22,31 @@ options = parser.parse_args()
 X_file = options.X_file
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
 folder = os.path.dirname(X_file)
+original_folder = '/Users/jilljenn/code/ktm/data/duck'
 
 X = load_npz(X_file)
 y = np.load(y_file)
 
 try:
-    i_train = np.load(os.path.join(folder, 'i_train{}.npy'.format(options.subset)))
-    i_test = np.load(os.path.join(folder, 'i_test{}.npy'.format(options.subset)))
+    i_train = np.load(os.path.join(original_folder, 'i_train{}.npy'.format(options.subset)))
+    i_test = np.load(os.path.join(original_folder, 'i_test{}.npy'.format(options.subset)))
+    y_test = np.load(os.path.join(folder, 'y-ui-test.npy'.format(options.subset)))
+    print('Yepee')
+    print('Yepee', i_train, X.shape)
     X_train = X[i_train]
     y_train = y[i_train]
     X_test = X[i_test]
-    y_test = y[i_test]
-except:
+    # y_test = y[i_test]
+    print(folder)
+    if folder.endswith('0'):
+        print('ok', X_train.shape, X_test.shape)
+        X_train = vstack((X_train, X_test))
+        print('ok', y_train.shape, y_test.shape)
+        y_train = np.concatenate((y_train, y_test))
+        print('yepee')
+except Exception as e:
+    print('NOES', e)
+    sys.exit(0)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
                                                         shuffle=False)
 

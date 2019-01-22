@@ -6,13 +6,17 @@ import numpy as np
 import sys
 
 
+FULL = True
 X_file = sys.argv[1]
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
 
 X = load_npz(X_file)
 y = np.load(y_file)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
-                                                    shuffle=False)
+if FULL:
+    X_train, X_test, y_train, y_test = X, X, y, y
+else:
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
+                                                        shuffle=False)
 
 model = LogisticRegression()  # Has L2 regularization by default
 model.fit(X_train, y_train)
@@ -31,3 +35,5 @@ try:
     print('Test AUC:', roc_auc_score(y_test, y_pred_test))
 except ValueError:
     pass
+
+np.save(X_file.replace('.npz', '-coef.npy'), model.coef_)

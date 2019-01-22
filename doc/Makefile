@@ -1,6 +1,7 @@
 all:
 	pandoc -s --bibliography=biblio.bib --biblatex aaai2019-ktm-slides.md -t beamer -o aaai2019-ktm-slides.tex
-	pdflatex aaai2019-ktm-slides
+	# open aaai2019-ktm-slides.tex
+	pdflatex aaai2019-ktm-slides.tex
 	# biber aaai2019-ktm-slides
 	# pdflatex aaai2019-ktm-slides
 	open aaai2019-ktm-slides.pdf
