@@ -4,6 +4,7 @@
 \renewcommand*\familydefault{\sfdefault}
 \usepackage[italic]{mathastext}
 \usepackage{isomath}
+\newcommand\alert[1]{#1}
 
 \begin{document}
 \begin{tikzpicture}[scale=0.6]
@@ -22,13 +23,25 @@
 \draw node[left] at (0,0.5) {$\bm{x}$};
 \draw node[left] at (0,3) {$\bm{w}$};
 \draw node[left] at (0,6) {$V$};
-\node at (3.5,0.5) {1};
+\foreach \i in {0.5,...,2.5} {
+    \node at (\i,0.5) {0};
+}
+\foreach \i in {4.5,...,12.5} {
+    \node at (\i,0.5) {0};
+}
+\foreach \i in {14.5,...,17.5} {
+    \node at (\i,0.5) {0};
+}
+\foreach \i in {19.5,...,19.5} {
+    \node at (\i,0.5) {0};
+}
+\node at (3.5,0.5) {\alert1};
 \node at (3.5,3) {$\theta_i$};
 \node at (3.5,6) {$\bm{u_i}$};
-\node at (13.5,0.5) {1};
+\node at (13.5,0.5) {\alert1};
 \node at (13.5,3) {$e_j$};
 \node at (13.5,6) {$\bm{v_j}$};
-\node at (18.5,0.5) {1};
+\node at (18.5,0.5) {\alert1};
 \node at (18.5,3) {$\beta_k$};
 \node at (18.5,6) {$\bm{s_k}$};
 \node at (3.5,1.5) {$U_i$};

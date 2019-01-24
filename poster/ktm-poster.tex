@@ -16,6 +16,7 @@ margin=0mm, innermargin=15mm, blockverticalspace=5mm, colspace=15mm, subcolspace
 \addbibresource{biblio.bib}
 \usepackage{fontspec}
 \usepackage{bm}
+\newfontfamily\Uni{DejaVu Sans}
 \newfontfeature{Microtype}{protrusion=default;expansion=default;}
 \tikzposterlatexaffectionproofoff
 
@@ -124,37 +125,36 @@ Tokyo, Japan & Kyoto, Japan\\
     
     \column{.48}
     \block[roundedcorners=40]{Problem: Knowledge Tracing}{
-        We want to \alert{predict the performance} of students over questions.\\
-        $\simeq$ collaborative filtering + \parbox[t]{0.7\linewidth}{\vspace{-0.55\baselineskip}\begin{sidebox}
-            students can attempt a question multiple times\\
-            students can learn between attempts
-            \end{sidebox}}
-        \textbf{Fit:} Ordered triplets $(i, j, o) \in I \times J \times \{0, 1\}$\\
-        $\Rightarrow$ Student $i$ attempted question $j$ and got it correct/incorrect.\\
-        \textbf{Predict:} $(i, j, ?)$ for new triplets.
+        We want to \alert{predict the performance over time} of users over items.\\
+        $\simeq$ matrix completion + \parbox[t]{0.7\linewidth}{\vspace{-0.55\baselineskip}\begin{sidebox}
+            users can attempt an item multiple times\\
+            users can learn between attempts
+            \end{sidebox}}\vspace{1cm}
+        \textbf{Fit:} Ordered triplets $(\textnormal{user } i, \textnormal{item } j, c) \in I \times J \times \{\textnormal{\Uni ✔︎}, \textnormal{\Uni ✘}\}$\\
+        \textbf{Predict:} $(\textnormal{user } i, \textnormal{item } j, ?)$ for new triplets.
     }
     \block[roundedcorners=40]{Existing Models}{
         \begin{itemize}
             \item \textbf{Prediction of sequences}: Bayesian or Deep Knowledge Tracing \autocite{piech2015deep}
             \item \textbf{Factor Analysis}: Item Response Theory, Performance Factor Analysis
 
-            \[ \underbrace{\textnormal{BKT}}_\textnormal{HMM} < \textnormal{PFA} \simeq^{\textnormal{\autocite{xiong2016going}}} \underbrace{\textnormal{DKT}}_\textnormal{LSTM} \leq^{\textnormal{\cite{wilson2016back}}} \textnormal{IRT } \alert{\leq^{\textnormal{[this poster]}} \textnormal{KTM}} \]
+            \[ \underbrace{\textnormal{BKT}}_\textnormal{HMM} < \textnormal{PFA} \leq \underbrace{\textnormal{DKT}}_\textnormal{LSTM} \leq^{\textnormal{\cite{wilson2016back}}} \textnormal{IRT } \alert{\leq^{\textnormal{[this poster]}} \textnormal{KTM}} \]
 
         \end{itemize}
 
         \vspace{1cm}
         \innerblock[]{Item Response Theory (IRT)}{
-            Students $i \in I$ have unknown level \alert{$\theta_i$}\\
-            Questions $j \in J$ have unknown difficulty \alert{$d_j$}
-            \[ \logit p_{ij} = \logit \Pr(\textsf{Student } i \textnormal{ answers correctly } \textsf{question } j) = \alert{\theta_i} - \alert{d_j} \]
+            Users $i \in I$ have unknown level \alert{$\theta_i$}\\
+            Items $j \in J$ have unknown difficulty \alert{$d_j$}
+            \[ \logit p_{ij} = \logit \Pr(\textsf{User } i \textnormal{ answers correctly } \textsf{item } j) = \alert{\theta_i} - \alert{d_j} \]
 
             \hfill $\Rightarrow$ \textnormal{ \textbf{really simple, ignores skills \& multiple attempts}}
         }
         Multidimensional item response theory (MIRT): $\logit{} p_{ij}= \langle \bm{\theta_i}, \bm{d_j} \rangle + \delta_j$
         \vspace{1cm}
         \innerblock[]{Performance factor analysis (PFA)}{
-            Students $i \in I$ have level \alert{$\theta_i$}, $W_{ik}$ wins and $F_{ik}$ fails over skill $k$\\
-            Questions $j \in J$ have known requirements $\textnormal{KC}(j) \subseteq K$\\
+            Users $i \in I$ have level \alert{$\theta_i$}, $W_{ik}$ wins and $F_{ik}$ fails over skill $k$\\
+            Items $j \in J$ have known requirements $\textnormal{KC}(j) \subseteq K$\\
             Skills $k \in K$ have bias \alert{$\beta_k$} and bonus after win \alert{$\gamma_k$} and fail \alert{$\delta_k$}
 
             \[ \logit{} p_{ij}= \alert{\theta_i} + \sum_{k \in \textnormal{KC}(j)} \alert{\beta_k} + \alert{\gamma_k} W_{ik} + \alert{\delta_k} F_{ik} \]
@@ -165,42 +165,43 @@ Tokyo, Japan & Kyoto, Japan\\
     }
 
     \column{.52}
-    \block{Our proposal}{
+    \block{Our contribution}{
         \innerblock[]{Knowledge Tracing Machines (KTM)}{
-            Students $i \in I$, questions $j \in J$ and \alert{side information} are encoded into $\bm{x}$\\
+            Users $i \in I$, items $j \in J$ and \alert{side information} are encoded into $\bm{x}$\\
             All entities have a bias \alert{$w_k$} and embedding \alert{$\bm{v_k}$} to model pairwise relationships:
 
-            \[ \probit p(\bm{x}) = \mu + \underbrace{\sum_{k = 1}^N \alert{w_k} x_k}_\textnormal{logistic regression} + \underbrace{\sum_{1 \leq k < l \leq N} x_k x_l \langle \alert{\bm{v_k}}, \alert{\bm{v_l}} \rangle}_\textnormal{pairwise relationships} \]
+            \[ \begin{aligned}
+            \psi(p(\bm{x})) & = \mu + \underbrace{\sum_{k = 1}^N \alert{w_k} x_k}_\textnormal{logistic regression} + \underbrace{\sum_{1 \leq k < l \leq N} x_k x_l \langle \alert{\bm{v_k}}, \alert{\bm{v_l}} \rangle}_\textnormal{pairwise relationships}\\
+            & = \mu + \langle \bm{w}, \bm{x} \rangle + \frac12\left(|| \bm{x} V ||_2^2 - (\bm{x} \circ \bm{x}) (V \circ V) \bm1 \right)
+            \end{aligned} \]
         }
         E.g. $\psi = \probit, w_k, v_{kf} \sim \N(\mu, 1/\lambda)$, $\mu \sim \N(0, 1)$, $\lambda \sim \Gamma(1, 1)$\\    
         Factorization machine trained using \textbf{Gibbs sampling} \cite{rendle2012factorization} or variational inference\vspace{-1cm}
     }
 
     \block{Encoding data into sparse features}{
-        \begin{minipage}{0.46\linewidth}
+        Operations between embeddings are computed for each pair of activated features\vspace{2mm}
+
+        \begin{minipage}{0.5\linewidth}
             \includegraphics[width=\linewidth]{figures/fm.pdf}
 %            If $\psi = \probit$, $w_k, v_{kf} \sim \N(\mu, 1/\lambda)$,\\
   %          $\mu \sim \N(0, 1)$, $\lambda \sim \Gamma(1, 1)$\\
   %          Training using 
-        \end{minipage} \hfill $\rightarrow$ \hfill
-        \begin{minipage}{0.46\linewidth}
+        \end{minipage} \hfill %$\rightarrow$ \hfill
+        \begin{minipage}{0.49\linewidth}
             \hfill \includegraphics[width=\linewidth]{figures/fm2.pdf}
         \end{minipage}
+        \vspace{5mm}
 
+        Existing models are recovered according to the chosen features
+
+        \hspace{5.6cm}\begin{tikzpicture}[xscale=7.8,>=stealth]
+        \draw[very thick,<->] (2,0) -- node[above] {IRT} ++(1,0);
+        \draw[very thick,<->] (3.05,0) -- node[above] {PFA} ++(1.68,0);
+        \end{tikzpicture}
         \begin{center}
         \input{tables/fm}
         \end{center}
-        \vspace{1cm}
-
-        \begin{minipage}{0.7\linewidth}
-            \textbf{KTM} take IRT, MIRT, PFA as special cases\\
-            Encoding users + items == IRT\\
-            Encoding users + skills + attempts == AFM\\
-            Encoding users + skills + wins + fails == PFA
-        \end{minipage}
-        \begin{minipage}{0.29\linewidth}
-            \includegraphics[width=\linewidth]{figures/ktm.pdf}
-        \end{minipage}
     }
 
 \end{columns}
@@ -229,8 +230,8 @@ Tokyo, Japan & Kyoto, Japan\\
     \item We can visualize learning:
     \end{itemize}
     \centering
-    \includegraphics[width=0.8\linewidth]{figures/viz.pdf}
-    \vspace{-2cm}
+    \includegraphics[width=\linewidth]{figures/viz.pdf}
+    \vspace{-3cm}
 }
 \block{References}{
     \printbibliography[heading=none]

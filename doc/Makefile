@@ -1,4 +1,4 @@
-all:
+aaai:
 	pandoc -s --bibliography=biblio.bib --biblatex aaai2019-ktm-slides.md -t beamer -o aaai2019-ktm-slides.tex
 	# open aaai2019-ktm-slides.tex
 	pdflatex aaai2019-ktm-slides.tex
@@ -6,6 +6,11 @@ all:
 	# pdflatex aaai2019-ktm-slides
 	open aaai2019-ktm-slides.pdf
 
+simple:
+	pandoc -s aaai.md -t beamer -o aaai.pdf
+	# open aaai.tex
+	# pdflatex aaai
+	open aaai.pdf
 
 kyodai:
 	pandoc -s --bibliography=biblio.bib --biblatex kyodai.md -t beamer -o kyodai.tex
