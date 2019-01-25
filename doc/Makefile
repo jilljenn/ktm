@@ -1,3 +1,11 @@
+hawaii:
+	pandoc -s --bibliography=biblio.bib --biblatex hawaii.md -t beamer -o hawaii.tex
+	# open hawaii.tex
+	pdflatex hawaii.tex
+	# biber hawaii
+	# pdflatex hawaii
+	open hawaii.pdf
+
 aaai:
 	pandoc -s --bibliography=biblio.bib --biblatex aaai2019-ktm-slides.md -t beamer -o aaai2019-ktm-slides.tex
 	# open aaai2019-ktm-slides.tex
