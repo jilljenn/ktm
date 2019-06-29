@@ -1,9 +1,9 @@
 % Knowledge Tracing Machines:\newline Factorization Machines for Knowledge Tracing
 % Jill-Jênn Vie \and Hisashi Kashima
-% The University of Hawaiʻi at Mānoa, January 24, 2019\bigskip\newline \url{https://arxiv.org/abs/1811.03388}
+% The University of Tokyo, February 7, 2019\bigskip\newline \url{https://arxiv.org/abs/1811.03388}
 ---
 theme: Frankfurt
-handout: true
+handout: false
 institute: \includegraphics[height=9mm]{figures/aip.png} \quad \includegraphics[height=1cm]{figures/kyoto.png}
 section-titles: false
 biblio-style: authoryear
