@@ -1,29 +1,47 @@
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, log_loss
+from collections import defaultdict
 from scipy.sparse import load_npz
+from scipy.stats import sem, t
 import numpy as np
-import glob
 import os.path
+import math
+import glob
 import sys
+
+
+def avgstd(l):
+    '''
+    Given a list of values, returns a 95% confidence interval
+    if the standard deviation is unknown.
+    '''
+    n = len(l)
+    mean = sum(l) / n
+    std_err = sem(l)
+    confidence = 0.95
+    h = std_err * t.ppf((1 + confidence) / 2, n - 1)
+    return '%.3f ± %.3f' % (round(mean, 3), round(h, 3))
 
 
 FULL = False
 X_file = sys.argv[1]
 folder = os.path.dirname(X_file)
-y_file = os.path.join(folder, 'y.npy')
+y_file = X_file.replace('X', 'y').replace('npz', 'npy')
 
 X = load_npz(X_file)
 nb_samples, _ = X.shape
 y = np.load(y_file).astype(np.int32)
+print(X.shape, y.shape)
 
 # Are folds fixed already?
 X_trains = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
-if os.path.isfile(os.path.join(folder, 'fold0.npy')):
-    for i, filename in enumerate(glob.glob(os.path.join(folder, 'fold*.npy'))):
+folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
+if folds:
+    for i, filename in enumerate(folds):
         i_test = np.load(filename)
         print('Fold', i, i_test.shape)
         i_train = list(set(range(nb_samples)) - set(i_test))
@@ -34,7 +52,6 @@ if os.path.isfile(os.path.join(folder, 'fold0.npy')):
 
 
 if X_trains:
-    print('Yepee', len(X_trains))
     X_train, X_test, y_train, y_test = (X_trains[0], X_tests[0],
                                         y_trains[0], y_tests[0])
     print(X_train.shape, X_test.shape)
@@ -45,24 +62,33 @@ else:
                                                         shuffle=False)
 
 
-model = LogisticRegression()  # Has L2 regularization by default
-model.fit(X_train, y_train)
+results = defaultdict(list)
+for i in X_trains:
+    X_train, X_test, y_train, y_test = (X_trains[i], X_tests[i],
+                                        y_trains[i], y_tests[i])
+    model = LogisticRegression()  # Has L2 regularization by default
+    model.fit(X_train, y_train)
 
-y_pred_train = model.predict_proba(X_train)[:, 1]
-if len(y_pred_train) < 10:
-    print('Train predict:', y_pred_train)
-    print('Train was:', y_train)
-print('Train ACC:', np.mean(y_train == np.round(y_pred_train)))
-print('Train AUC:', roc_auc_score(y_train, y_pred_train))
+    for dataset, X, y in [('Train', X_train, y_train),
+                          ('Test', X_test, y_test)]:
+        y_pred = model.predict_proba(X)[:, 1]
+        if len(y_pred) < 10:
+            print(dataset, 'predict:', y_pred)
+            print(dataset, 'was:', y)
+        try:  # This may fail if there are too few classes
+            nll = log_loss(y, y_pred)
+            auc = roc_auc_score(y, y_pred)
+        except ValueError:
+            nll = auc = -1
 
-y_pred_test = model.predict_proba(X_test)[:, 1]
-if len(y_pred_test) < 10:
-    print('Test predict:', y_pred_test)
-    print('Test was:', y_test)
-print('Test ACC:', np.mean(y_test == np.round(y_pred_test)))
-try:
-    print('Test AUC:', roc_auc_score(y_test, y_pred_test))
-except ValueError:
-    pass
+        metrics = {'ACC': np.mean(y == np.round(y_pred)),
+                   'NLL': nll,
+                   'AUC': auc}
+        for metric, value in metrics.items():
+            results['{} {}'.format(dataset, metric)].append(value)
+            print(dataset, metric, 'on fold {}:'.format(i), value)
 
-np.save(os.path.join(folder, 'coef.npy'), model.coef_)
+    np.save(os.path.join(folder, 'coef{}.npy'.format(i)), model.coef_)
+
+for metric in results:
+    print('{}: {}'.format(metric, avgstd(results[metric])))

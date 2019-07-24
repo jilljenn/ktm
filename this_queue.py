@@ -11,6 +11,9 @@ class OurQueue:
     def __len__(self):
         return len(self.queue)
 
+    def get_counters(self):
+        return [len(self.queue)] + [len(self.queue) - cursor for cursor in self.cursors]
+
     def push(self, time):
         self.queue.append(time)
         self.now = time
@@ -21,9 +24,9 @@ class OurQueue:
             while self.now - self.queue[self.cursors[pos]] > length:
                 self.cursors[pos] += 1
         # print(self.now, self.queue[:self.cursors[0]], [self.queue[self.cursors[i]:self.cursors[i + 1]] for i in range(len(self.cursors) - 1)], self.queue[self.cursors[-1]:])
-        return [len(self.queue)] + [len(self.queue) - cursor for cursor in self.cursors]
 
 
+# Make this a test
 q = OurQueue()
 q.push(0)
 q.push(10)
