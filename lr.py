@@ -8,6 +8,7 @@ import numpy as np
 import os.path
 import math
 import glob
+import time
 import sys
 
 
@@ -67,10 +68,13 @@ for i in X_trains:
     X_train, X_test, y_train, y_test = (X_trains[i], X_tests[i],
                                         y_trains[i], y_tests[i])
     model = LogisticRegression()  # Has L2 regularization by default
+    dt = time.time()
     model.fit(X_train, y_train)
+    print('Training', time.time() - dt)
 
     for dataset, X, y in [('Train', X_train, y_train),
                           ('Test', X_test, y_test)]:
+        dt = time.time()
         y_pred = model.predict_proba(X)[:, 1]
         if len(y_pred) < 10:
             print(dataset, 'predict:', y_pred)
@@ -87,6 +91,7 @@ for i in X_trains:
         for metric, value in metrics.items():
             results['{} {}'.format(dataset, metric)].append(value)
             print(dataset, metric, 'on fold {}:'.format(i), value)
+        print(time.time() - dt)
 
     np.save(os.path.join(folder, 'coef{}.npy'.format(i)), model.coef_)
 
