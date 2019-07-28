@@ -3,7 +3,7 @@ import random
 import os.path
 
 
-def save_folds(full, nb_folds):
+def save_folds(full, nb_folds=5):
     nb_samples = len(full)
     all_users = full['user_id'].unique()
     random.shuffle(all_users)

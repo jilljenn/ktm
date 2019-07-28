@@ -1,25 +1,24 @@
 # Knowledge Tracing Machines
 
-- To be presented at the [AAAI 2019](https://aaai.org/Conferences/AAAI-19/) conference in Honolulu, Hawaii on January 27, 2019.
-- Early results were presented as a [poster](https://github.com/jilljenn/ktm/blob/master/poster/ktm-poster.pdf) at the [AIP-IIS-MLGT](https://sites.google.com/view/aip-fau-mlgt-2018/home) workshop at Georgia Tech, Atlanta, GA on March 8, 2018.
+- Presented at the AAAI 2019 conference in Honolulu, Hawaii on January 27, 2019.
+- Applied in the [Best Paper Award](https://arxiv.org/abs/1905.06873) of the EDM 2019 conference in Montreal, Canada on July 2, 2019.
 
-See our article: [Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing](https://arxiv.org/abs/1811.03388).
-
-Check our slides: [PDF](http://jiji.cat/slides/aaai2019-ktm-slides.pdf) (comments are welcome!).
+See our article: [Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing [pdf]](https://arxiv.org/abs/1811.03388) [[slides]](http://jiji.cat/slides/aaai2019-ktm-slides.pdf).  
+Comments are always welcome!
 
     @inproceedings{Vie2019,
       Author = {{Vie}, Jill-J{\^e}nn and {Kashima}, Hisashi},
       Booktitle = {Proceedings of the 33th {AAAI} Conference on Artificial Intelligence},
       Title = {{Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing}},
-      Pages = {to appear},
+      Pages = {750--757},
       Url = {http://arxiv.org/abs/1811.03388},
       Year = 2019}
 
-Authors: [Jill-Jênn Vie](https://jilljenn.github.io), [Hisashi Kashima](http://www.geocities.co.jp/kashi_pong/index_e.html)
+Authors: [Jill-Jênn Vie](https://jilljenn.github.io), [Hisashi Kashima](https://hkashima.github.io/index_e.html)
 
 ## Follow our tutorial
 
-Presented at the [Optimizing Human Learning](https://humanlearn.io) workshop in Montreal, CA on June 12, 2018.
+Presented at the [Optimizing Human Learning](https://humanlearn.io) workshop in Kingston, Jamaica on June 4, 2019.
 
 Slides from the tutorial are available [here](doc/tuto.pdf). A notebook will be available soon (please complain in the issues to speed up the process).
 
@@ -49,6 +48,13 @@ To understand what is going on, look at the [Makefile](Makefile). Basically ther
 ### Encoding data into sparse features
 
     python encode.py --dataset dummy --skills --wins --fails  # Will encode PFA sparse features into X-swf.npz
+
+### NEW! Encoding time windows
+
+To prepare a dataset, see examples in the `data` folder.  
+Skill information should be available either as `skill_id`, or `skill_ids` separated with `~~`, or in a q-matrix `q_mat.npz`.
+
+    python encode_tw.py --dataset dummy_tw --tw  # Will encode DAS3H sparse features into X.npz
 
 ### Running a ML model
 
