@@ -1,6 +1,6 @@
 % Optimizing Human Learning
-% Fabrice Popineau \and \alert{Jill-Jênn Vie} \and Michal Valko\newline RIKEN AIP & New York University\newline\newline\includegraphics[height=1.2cm]{figures/cs.png}\qquad\includegraphics[height=1.3cm]{figures/aip.png}\qquad\includegraphics[height=1.4cm]{figures/inria.jpg}
-% June 4, 2019
+% Fabrice Popineau \and \alert{Jill-Jênn Vie} \and Michal Valko\newline RIKEN AIP\newline\newline\includegraphics[height=1.2cm]{figures/cs.png}\qquad\includegraphics[height=1cm]{figures/aip.png}\qquad\includegraphics[height=1.3cm]{figures/inria.jpg}
+% August 21, 2019
 ---
 theme: Frankfurt
 section-titles: false
@@ -19,19 +19,6 @@ biblatexoptions:
     - maxcitenames=5
 ---
 # Introduction
-
-## Outline
-
-\begin{tabular}{rl}
-9:30 AM & Welcome and Introduction\\[5mm]
-9:45 AM & Tutorial: Knowledge Tracing\\[5mm]
-10:30 AM & Coffee Break\\[5mm]
-11:00 AM & An Exploration of Disciplinary Literacy\\
-& in Learners' Short Answers\\
-& \emph{Jean-Philippe Corbeil, Amal Zouaq, and Michel Gagnon}\\[5mm]
-11:30 AM & Open Discussion\\[5mm]
-12:15 AM & End of workshop
-\end{tabular}
 
 ## Optimizing Human Learning
 
@@ -334,12 +321,12 @@ Results obtained with FM $d = 20$
 \centering
 \footnotesize
 \begin{tabular}{cccc} \toprule
-Modèle & Composant & Taille & AUC\\ \midrule
-Bayesian Knowledge Tracing & Modèle de Markov & \multirow{2}{*}{$2N$} & \multirow{2}{*}{0.63}\\
-(Corbett and Anderson 1994) & caché\\ \midrule
-Deep Knowledge Tracing & Réseau de neurones & \multirow{2}{*}{$O(Nd + d^2)$} & \multirow{2}{*}{0.75}\\
-(Piech et al. 2015) & récurrent\\ \midrule
-\only<2->{Item Response Theory & Régression logistique & \multirow{3}{*}{$N$} & \multirow{3}{*}{0.76}\\}
+Model & Component & Size & AUC\\ \midrule
+Bayesian Knowledge Tracing & Hidden Markov Model & \multirow{2}{*}{$2N$} & \multirow{2}{*}{0.63}\\
+(Corbett and Anderson 1994) & \\ \midrule
+Deep Knowledge Tracing & Recurrent Neural Network & \multirow{2}{*}{$O(Nd + d^2)$} & \multirow{2}{*}{0.75}\\
+(Piech et al. 2015) & \\ \midrule
+\only<2->{Item Response Theory & Logistic Regression & \multirow{3}{*}{$N$} & \multirow{3}{*}{0.76}\\}
 \only<2->{(Rasch 1960) & online\\}
 \only<2->{(Wilson et al. 2016) \\ \midrule}
 \only<2->{Knowledge Tracing Machines & Factorization Machines & $Nd + N$ & \alert{0.82}\\ \bottomrule}
@@ -362,7 +349,7 @@ Use knowledge tracing machines with extra features: counters of attempts at skil
 **EDM 2019**
 
 :   \scriptsize
-\mycite{Benoît Choffin, Fabrice Popineau, Yolaine Bourda, and Jill-Jênn Vie (2019)}{DAS3H: Modeling Student Learning and Forgetting for Optimally Scheduling Distributed Practice of Skills}{\alert{Best Paper Nominee.}}
+\mycite{Benoît Choffin, Fabrice Popineau, Yolaine Bourda, and Jill-Jênn Vie (2019)}{DAS3H: Modeling Student Learning and Forgetting for Optimally Scheduling Distributed Practice of Skills}{\alert{Best Paper Award}}
 
 # Deep Learning
 
