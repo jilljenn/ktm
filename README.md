@@ -20,7 +20,7 @@ Authors: [Jill-Jênn Vie](https://jilljenn.github.io), [Hisashi Kashima](https:/
 
 Presented at the [Optimizing Human Learning](https://humanlearn.io) workshop in Kingston, Jamaica on June 4, 2019.
 
-Slides from the tutorial are available [here](doc/tuto.pdf). A notebook will be available soon (please complain in the issues to speed up the process).
+Slides from the tutorial are available [here](doc/tuto.pdf). A notebook on Colab will be available soon.
 
 The tutorial makes you play with the models to assess **weak generalization**. To assess **strong generalization** and reproduce the experiments of the paper, you may want to borrow code from another repository: [jilljenn/TF-recomm](https://github.com/jilljenn/TF-recomm/blob/master/fm.py#L106).
 
@@ -36,27 +36,33 @@ If you also want to get the factorization machines running (KTM for *d* > 0), yo
 
 ## Run
 
-    make  # To get the encodings (npz)
-    make  # To get results (txt)
+### Encoding data into sparse features (quick start)
 
-You can also download the [Assistments 2009 dataset](http://jiji.cat/weasel2018/data.csv) into `data/assistments09` and do:
+    python encode.py --users --items  # To get the encodings (npz)
+    python lr.py data/dummy/X-ui.npz  # To get results (txt)
 
-    make big
+You can also download the [Assistments 2009 dataset](https://jiji.cat/weasel2018/data.csv) into `data/assistments09` and change the dataset:
 
-To understand what is going on, look at the [Makefile](Makefile). Basically there are two steps:
+    python encode.py --dataset assistments09 --skills --wins --fails  # Will encode PFA sparse features into X-swf.npz
 
-### Encoding data into sparse features
-
-    python encode.py --dataset dummy --skills --wins --fails  # Will encode PFA sparse features into X-swf.npz
+If you are lazy, you can also just do `make` and try to understand what is going on in the [Makefile](Makefile).
 
 ### NEW! Encoding time windows
+
+Choffin et al. proposed the DAS3H model, and we implemented it using queues. This code is faster than the original KTM encoding.
 
 To prepare a dataset, see examples in the `data` folder.  
 Skill information should be available either as `skill_id`, or `skill_ids` separated with `~~`, or in a q-matrix `q_mat.npz`.
 
     python encode_tw.py --dataset dummy_tw --tw  # Will encode DAS3H sparse features into X.npz
 
+Then you can run `lr.py` or `fm.py`, see below.
+
 ### Running a ML model
+
+Assume you encoded say PFA features:
+
+    python encode.py --skills --wins --fails  # Will create X-swf.npz
 
 For logistic regression:
 

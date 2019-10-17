@@ -19,6 +19,8 @@ def avgstd(l):
     '''
     n = len(l)
     mean = sum(l) / n
+    if n == 1:
+        return '%.3f' % round(mean, 3)
     std_err = sem(l)
     confidence = 0.95
     h = std_err * t.ppf((1 + confidence) / 2, n - 1)
@@ -50,27 +52,28 @@ if folds:
         y_trains[i] = y[i_train]
         X_tests[i] = X[i_test]
         y_tests[i] = y[i_test]
-
-
-if X_trains:
-    X_train, X_test, y_train, y_test = (X_trains[0], X_tests[0],
-                                        y_trains[0], y_tests[0])
-    print(X_train.shape, X_test.shape)
 elif FULL:
-    X_train, X_test, y_train, y_test = X, X, y, y
+    X_trains[0] = X
+    X_tests[0] = X
+    y_trains[0] = y
+    y_tests[0] = y
 else:
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
                                                         shuffle=False)
-
+    X_trains[0] = X_train
+    X_tests[0] = X_test
+    y_trains[0] = y_train
+    y_tests[0] = y_test
+    
 
 results = defaultdict(list)
 for i in X_trains:
     X_train, X_test, y_train, y_test = (X_trains[i], X_tests[i],
                                         y_trains[i], y_tests[i])
-    model = LogisticRegression()  # Has L2 regularization by default
+    model = LogisticRegression(solver='liblinear')  # Has L2 regularization by default
     dt = time.time()
     model.fit(X_train, y_train)
-    print('Training', time.time() - dt)
+    print('[time] Training', time.time() - dt, 's')
 
     for dataset, X, y in [('Train', X_train, y_train),
                           ('Test', X_test, y_test)]:
@@ -91,9 +94,10 @@ for i in X_trains:
         for metric, value in metrics.items():
             results['{} {}'.format(dataset, metric)].append(value)
             print(dataset, metric, 'on fold {}:'.format(i), value)
-        print(time.time() - dt)
+        print('[time]', time.time() - dt, 's')
 
     np.save(os.path.join(folder, 'coef{}.npy'.format(i)), model.coef_)
 
+print('# Final results')
 for metric in results:
     print('{}: {}'.format(metric, avgstd(results[metric])))

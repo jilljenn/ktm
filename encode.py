@@ -49,7 +49,7 @@ def df_to_sparse(df, config, active_features):
 
 df = pd.read_csv('data.csv')
 with open('config.yml') as f:
-    config = yaml.load(f)
+    config = yaml.safe_load(f)
 print('Configuration', config)
 X, y = df_to_sparse(df, config, active_features)
 print(df.head())
@@ -58,3 +58,4 @@ if options.dataset == 'dummy':
 
 save_npz('X-{:s}.npz'.format(features_suffix), X)
 np.save('y-{:s}.npy'.format(features_suffix), y)
+print('Successfully created X-{:s}.npz and y-{:s}.npy in data/{} folder'.format(features_suffix, features_suffix, options.dataset))
