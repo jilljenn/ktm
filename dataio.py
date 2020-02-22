@@ -1,3 +1,5 @@
+from sklearn.model_selection import KFold
+import pandas as pd
 import numpy as np
 import random
 import os.path
@@ -18,3 +20,11 @@ def save_folds(full, nb_folds=5):
         np.save('folds/{}fold{}.npy'.format(nb_samples, i), fold)
         everything += list(fold)
     assert sorted(everything) == list(range(nb_samples))
+
+
+def save_weak_folds(full, nb_folds=5):
+    nb_samples = len(full)
+    all_samples = range(nb_samples)
+    kfold = KFold(nb_folds, shuffle=True)
+    for i, (train, test) in enumerate(kfold.split(full)):
+        np.save('folds/weak{}fold{}.npy'.format(nb_samples, i), test)

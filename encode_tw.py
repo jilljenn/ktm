@@ -1,7 +1,7 @@
 from utils.this_queue import OurQueue
 from collections import defaultdict, Counter
 from scipy.sparse import load_npz, save_npz, csr_matrix, find
-from dataio import save_folds
+from dataio import save_folds, save_weak_folds
 from itertools import product
 from math import log
 import pandas as pd
@@ -58,7 +58,8 @@ for col in {'user_id', 'item_id', 'skill_id'}:
 
 # Create folds of indices and save them
 if not os.path.isfile('folds/{}fold0.npy'.format(nb_samples)):
-    save_folds(full)
+    save_weak_folds(full)
+save_weak_folds(full)
 
 conversion = {
     'user_id': 'user',

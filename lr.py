@@ -3,28 +3,15 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, log_loss
 from collections import defaultdict
 from scipy.sparse import load_npz
-from scipy.stats import sem, t
+from datetime import datetime
+from eval_metrics import avgstd
 import numpy as np
 import os.path
 import math
 import glob
 import time
+import json
 import sys
-
-
-def avgstd(l):
-    '''
-    Given a list of values, returns a 95% confidence interval
-    if the standard deviation is unknown.
-    '''
-    n = len(l)
-    mean = sum(l) / n
-    if n == 1:
-        return '%.3f' % round(mean, 3)
-    std_err = sem(l)
-    confidence = 0.95
-    h = std_err * t.ppf((1 + confidence) / 2, n - 1)
-    return '%.3f ± %.3f' % (round(mean, 3), round(h, 3))
 
 
 FULL = False
@@ -42,7 +29,7 @@ X_trains = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
-folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
+folds = glob.glob(os.path.join(folder, 'folds/weak{}fold*.npy'.format(nb_samples)))
 if folds:
     for i, filename in enumerate(folds):
         i_test = np.load(filename)
@@ -67,6 +54,7 @@ else:
     
 
 results = defaultdict(list)
+predictions = []
 for i in X_trains:
     X_train, X_test, y_train, y_test = (X_trains[i], X_tests[i],
                                         y_trains[i], y_tests[i])
@@ -79,6 +67,15 @@ for i in X_trains:
                           ('Test', X_test, y_test)]:
         dt = time.time()
         y_pred = model.predict_proba(X)[:, 1]
+
+        # Store predictions of the fold
+        if dataset == 'Test':
+            predictions.append({
+                'fold': i,
+                'pred': y_pred.tolist(),
+                'y': y.tolist()
+            })
+
         if len(y_pred) < 10:
             print(dataset, 'predict:', y_pred)
             print(dataset, 'was:', y)
@@ -101,3 +98,7 @@ for i in X_trains:
 print('# Final results')
 for metric in results:
     print('{}: {}'.format(metric, avgstd(results[metric])))
+
+iso_date = datetime.now().isoformat()
+with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
+    json.dump({'predictions': predictions}, f)

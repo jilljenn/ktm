@@ -1,12 +1,14 @@
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, log_loss
 from scipy.sparse import load_npz, vstack
+from datetime import datetime
 import pywFM
 import argparse
 import numpy as np
 import os
 import sys
 import glob
+import json
 
 
 # Location of libFM's compiled binary file
@@ -33,7 +35,7 @@ X_trains = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
-folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
+folds = glob.glob(os.path.join(folder, 'folds/weak{}fold*.npy'.format(nb_samples)))
 if folds:
     for i, filename in enumerate(folds):
         i_test = np.load(filename)
@@ -53,6 +55,7 @@ else:
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
                                                         shuffle=False)
 
+predictions = []
 params = {
     'task': 'classification',
     'num_iter': options.iter,
@@ -65,6 +68,12 @@ model = fm.run(X_train, y_train, X_test, y_test)
 y_pred_test = np.array(model.predictions)
 np.save(os.path.join(folder, 'y_pred{}.npy'.format(options.subset)), y_pred_test)
 
+predictions.append({
+    'fold': 0,
+    'pred': y_pred_test.tolist(),
+    'y': y_test.tolist()
+})
+
 print('Test predict:', y_pred_test)
 print('Test was:', y_test)
 print('Test ACC:', np.mean(y_test == np.round(y_pred_test)))
@@ -73,3 +82,7 @@ try:
     print('Test NLL', log_loss(y_test, y_pred_test))
 except ValueError:
     pass
+
+iso_date = datetime.now().isoformat()
+with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
+    json.dump({'predictions': predictions}, f)
