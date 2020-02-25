@@ -84,5 +84,13 @@ except ValueError:
     pass
 
 iso_date = datetime.now().isoformat()
+np.save(os.path.join(folder, 'w.npy'), np.array(model.weights))
+np.save(os.path.join(folder, 'V.npy'), model.pairwise_interactions)
 with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
-    json.dump({'predictions': predictions}, f)
+    json.dump({
+        'predictions': predictions,
+        'model': vars(options),
+        'mu': model.global_bias
+    }, f)
+
+print(model.keys())

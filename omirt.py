@@ -1,5 +1,5 @@
 from scipy.sparse import csr_matrix
-#from sklearn.metrics import log_loss
+from sklearn.metrics import roc_auc_score
 from autograd import grad
 import autograd.numpy as np
 import argparse
@@ -22,28 +22,44 @@ class OMIRT:
     def __init__(self, n_users=10, n_items=5, d=3):
         self.n_users = n_users
         self.n_items = n_items
-        self.GAMMA = 0.005
-        self.LAMBDA = 0.1
+        self.d = d
+        self.GAMMA = 0.1
+        self.LAMBDA = 0.#01
         self.mu = 0.
-        self.w = np.random.random(n_users + n_items)
-        self.V = np.random.random((n_users + n_items, d))
-        # self.user_bias = np.random.random(n_users)
-        # self.item_bias = np.random.random(n_items)
-        # self.user_embed = np.random.random((n_users, d))
-        # self.item_embed = np.random.random((n_items, d))
+        # self.w = np.random.random(n_users + n_items)
+        # self.V = np.random.random((n_users + n_items, d))
+        self.y_pred = []
+        self.w = np.random.random(n_users)
+        self.item_bias = np.random.random(n_items)
+        self.V = np.random.random((n_users, d))
+        self.item_embed = np.random.random((n_items, d))
         # self.V2 = np.power(self.V, 2)
+
+    def load(self, folder):
+        # Load mu
+        if self.d == 0:
+            w = np.load(os.path.join(folder, 'coef0.npy')).reshape(-1)
+        else:
+            w = np.load(os.path.join(folder, 'w.npy'))
+            V = np.load(os.path.join(folder, 'V.npy'))
+            self.V = V[:self.n_users]
+            self.item_embed = V[self.n_users:]
+        self.w = w[:self.n_users]
+        self.item_bias = w[self.n_users:]
+        print('w user', self.w.shape)
+        print('w item', self.item_bias.shape)
 
     def fit(self, X, y):
         # pywFM and libFM
         
-        for _ in range(10):
-            print(self.loss(X, y, self.mu, self.w, self.V))
+        for _ in range(1):
+            # print(self.loss(X, y, self.mu, self.w, self.V))
             # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
             gradient = grad(lambda w: self.loss(X, y, self.mu, w, self.V))(self.w)
             # print('grad', gradient.shape)
             self.w -= self.GAMMA * gradient
             self.V -= self.GAMMA * grad(lambda V: self.loss(X, y, self.mu, self.w, V))(self.V)
-            print(self.predict(X))
+            # print(self.predict(X))
 
     def predict(self, X, mu=None, w=None, V=None):
         if mu is None:
@@ -70,12 +86,20 @@ class OMIRT:
 
         # print('shape s x d', (self.V[users] * self.V[self.n_users + items]).shape)
 
-        y_pred = (mu + w[users] + w[self.n_users + items] +
-                  np.sum(V[users] * V[self.n_users + items], axis=1))
+        y_pred = mu + w[users] + self.item_bias[items]
+        if self.d > 0:
+            y_pred += np.sum(V[users] * self.item_embed[items], axis=1)
         return sigmoid(y_pred)
 
     def update(self, X, y):
-        pass
+        s = len(X)
+        for x, outcome in zip(X, y):
+            pred = self.predict(x.reshape(-1, 2))
+            # print('update', x, pred, outcome)
+            self.y_pred.append(pred)
+            self.fit(x.reshape(-1, 2), outcome)
+            # print(self.w.sum(), self.item_embed.sum())
+        print(roc_auc_score(y, self.y_pred))
 
     def loss(self, X, y, mu, w, V):
         pred = self.predict(X, mu, w, V)
@@ -132,6 +156,7 @@ if __name__ == '__main__':
             i_train = list(set(range(nb_samples)) - set(i_test))
             X_trains[i] = X[i_train]
             y_trains[i] = y[i_train]
+            i_test = i_test[:5000]  # Try on 50 first test samples
             X_tests[i] = X[i_test]
             y_tests[i] = y[i_test]
 
@@ -146,5 +171,10 @@ if __name__ == '__main__':
 
     n = X_train.shape[1]
     ofm = OMIRT(config['nb_users'], config['nb_items'], options.d)
-    ofm.fit(X_train, y_train)
+    # ofm.fit(X_train, y_train)
+    ofm.load(folder)
+
+    y_pred = ofm.predict(X_test)
+    print('auc', roc_auc_score(y_test, y_pred))
     
+    ofm.update(X_test, y_test)
