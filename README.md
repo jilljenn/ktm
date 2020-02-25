@@ -67,10 +67,17 @@ Assume you encoded say PFA features:
 For logistic regression:
 
     python lr.py data/dummy/X-swf.npz
+	# Will save weights in coef0.npy
 
 For factorization machines of size *d* = 5:
 
     python fm.py --d 5 data/dummy/X-swf.npz
+	# Will save weights in w.npy and V.npy
+
+For an online MIRT model:
+
+    python omirt.py --d 0 data/assist09/needed.csv  # Will load LR: coef0.npy
+	python omirt.py --d 5 data/assist09/needed.csv  # Will load FM: w.npy and V.npy
 
 ## Results
 
