@@ -52,20 +52,35 @@ if __name__ == '__main__':
             predictions_per_user[user]['pred'].append(pred)
             predictions_per_user[user]['y'].append(true)
 
+        users_ids = []
+        ndcg_ = []
         for user in predictions_per_user:
             this_pred = np.array(predictions_per_user[user]['pred'])
             this_true = np.array(predictions_per_user[user]['y'])
             if len(this_pred) > 1:
+                users_ids.append(user)
                 metrics['ndcg'].append(ndcg_score([this_true], [this_pred]))
                 metrics['ndcg@10'].append(ndcg_score([this_true], [this_pred], k=10))
                 metrics['ndcg-'].append(ndcg_score([1 - this_true], [1 - this_pred]))
+                ndcg_.append(ndcg_score([1 - this_true], [1 - this_pred]))
                 metrics['ndcg@10-'].append(ndcg_score([1 - this_true], [1 -this_pred], k=10))
+            if len(np.unique(this_true)) > 1:
+                metrics['auc'].append(roc_auc_score(this_true, this_pred))
     
         print(len(y))
         print(y[:10], test[:10])
 
-        print('auc', roc_auc_score(y, y_pred))
+        print('overall auc', roc_auc_score(y, y_pred))
+        print('auc', avgstd(metrics['auc']))
         print('ndcg', avgstd(metrics['ndcg']))
         print('ndcg@10', avgstd(metrics['ndcg@10']))
         print('ndcg-', avgstd(metrics['ndcg-']))
         print('ndcg@10-', avgstd(metrics['ndcg@10-']))
+
+        # Display ids of the students that have the lowest/highest ndcg-
+        print("Lowest NDCG- = {} on user {}".format(np.around(np.min(ndcg_),5),users_ids[np.argmin(ndcg_)]))
+        print(np.array(predictions_per_user[users_ids[np.argmin(ndcg_)]]['y']))
+        print(np.array(predictions_per_user[users_ids[np.argmin(ndcg_)]]['pred']))
+        print("Highest NDCG- = {} on user {}".format(np.around(np.max(ndcg_),5),users_ids[np.argmax(ndcg_)]))
+        print(np.array(predictions_per_user[users_ids[np.argmax(ndcg_)]]['y']))
+        print(np.array(predictions_per_user[users_ids[np.argmax(ndcg_)]]['pred']))

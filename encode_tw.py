@@ -59,7 +59,7 @@ for col in {'user_id', 'item_id', 'skill_id'}:
 # Create folds of indices and save them
 if not os.path.isfile('folds/{}fold0.npy'.format(nb_samples)):
     save_weak_folds(full)
-save_weak_folds(full)
+save_folds(full)
 
 conversion = {
     'user_id': 'user',

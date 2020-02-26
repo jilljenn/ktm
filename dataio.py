@@ -5,20 +5,20 @@ import random
 import os.path
 
 
-def save_folds(full, nb_folds=5):
+def save_folds(full, nb_folds=5, weakness=0.2):
     nb_samples = len(full)
     all_users = full['user_id'].unique()
     random.shuffle(all_users)
     fold_size = len(all_users) // nb_folds
     everything = []
     for i in range(nb_folds):
-        if i < nb_folds - 1:
-            ids_of_fold = set(all_users[i * fold_size:(i + 1) * fold_size])
-        else:
-            ids_of_fold = set(all_users[i * fold_size:])
+        upper_bound = (i + 1) * fold_size if i < nb_folds - 1 else len(all_users)
+        ids_of_fold = set(all_users[i * fold_size:upper_bound])
         fold = full.query('user_id in @ids_of_fold').index
-        np.save('folds/{}fold{}.npy'.format(nb_samples, i), fold)
         everything += list(fold)
+        n_samples = len(fold)
+        fold = fold[round(weakness * n_samples):]
+        np.save('folds/{}fold{}.npy'.format(nb_samples, i), fold)
     assert sorted(everything) == list(range(nb_samples))
 
 

@@ -29,7 +29,7 @@ X_trains = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
-folds = glob.glob(os.path.join(folder, 'folds/weak{}fold*.npy'.format(nb_samples)))
+folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
 if folds:
     for i, filename in enumerate(folds):
         i_test = np.load(filename)
