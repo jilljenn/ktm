@@ -26,9 +26,11 @@ def avgstd(l):
 
 
 if __name__ == '__main__':
-    os.chdir('data/assist09')
+    # os.chdir('data/assist09')
+    os.chdir('data/fr_en')
 
-    indices = np.load('folds/weak278607fold0.npy')
+    # indices = np.load('folds/278607fold0.npy')
+    indices = np.load('folds/weak926646fold0.npy')
     print(len(indices))
 
     df = pd.read_csv('needed.csv')
@@ -40,13 +42,19 @@ if __name__ == '__main__':
     metrics_per_sensitive_attr = defaultdict(list)
 
     r = re.compile(r'results-(.*).json')
-    for filename in glob.glob('results*2020*'):
+    for filename in sorted(glob.glob('results*2020*'))[::-1][:2]:
         m = r.search(filename)
         print(filename)
         dt = m.group(1)
 
         with open(filename) as f:
             results = json.load(f)
+
+        if 'model' in results:
+            print(results['model'])
+        else:
+            print('LR')
+            
         fold = results['predictions'][0]['fold']
         y_pred = results['predictions'][0]['pred']
         y = results['predictions'][0]['y']
@@ -87,7 +95,7 @@ if __name__ == '__main__':
                 attr_ids.append(attr)
                 metrics_per_sensitive_attr['auc'].append(roc_auc_score(this_true, this_pred))
     
-        print(len(y))
+        print('Test length', len(y))
         print(y[:10], test[:10])
 
         print('overall auc', roc_auc_score(y, y_pred))
