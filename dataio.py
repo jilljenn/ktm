@@ -18,7 +18,8 @@ def save_folds(full, nb_folds=5, weakness=0.2):
         everything += list(fold)
         n_samples = len(fold)
         fold = fold[round(weakness * n_samples):]
-        np.save('folds/{}fold{}.npy'.format(nb_samples, i), fold)
+        np.save('folds/{}{}fold{}.npy'.format(
+            'weak' if weakness > 0 else '', nb_samples, i), fold)
     assert sorted(everything) == list(range(nb_samples))
 
 
@@ -27,4 +28,4 @@ def save_weak_folds(full, nb_folds=5):
     all_samples = range(nb_samples)
     kfold = KFold(nb_folds, shuffle=True)
     for i, (train, test) in enumerate(kfold.split(full)):
-        np.save('folds/weak{}fold{}.npy'.format(nb_samples, i), test)
+        np.save('folds/weakest{}fold{}.npy'.format(nb_samples, i), test)

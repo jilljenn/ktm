@@ -1,5 +1,6 @@
 from scipy.sparse import csr_matrix
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
 from autograd import grad
 import autograd.numpy as np
 import argparse
@@ -9,6 +10,8 @@ from scipy.sparse import load_npz
 import glob
 import pandas as pd
 import yaml
+from datetime import datetime
+import json
 
 
 def log_loss(y, pred):
@@ -19,16 +22,18 @@ def sigmoid(x):
 
 
 class OMIRT:
-    def __init__(self, n_users=10, n_items=5, d=3):
+    def __init__(self, n_users=10, n_items=5, d=3, gamma=1., gamma_v=0.):
         self.n_users = n_users
         self.n_items = n_items
         self.d = d
-        self.GAMMA = 0.1
-        self.LAMBDA = 0.#01
+        self.GAMMA = gamma
+        self.GAMMA_V = gamma_v
+        self.LAMBDA = 0.1
         self.mu = 0.
         # self.w = np.random.random(n_users + n_items)
         # self.V = np.random.random((n_users + n_items, d))
         self.y_pred = []
+        self.predictions = []
         self.w = np.random.random(n_users)
         self.item_bias = np.random.random(n_items)
         self.V = np.random.random((n_users, d))
@@ -49,6 +54,24 @@ class OMIRT:
         print('w user', self.w.shape)
         print('w item', self.item_bias.shape)
 
+    def full_fit(self, X, y):
+        # pywFM and libFM
+        print('full fit', X.shape, y.shape)
+        
+        for _ in range(100):
+            if _ % 10 == 0:
+                print(self.loss(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed))
+            # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
+            gradient = grad(lambda w: self.loss(X, y, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
+            # print('grad', gradient.shape)
+            self.w -= self.GAMMA * gradient
+            self.item_bias -= self.GAMMA * grad(lambda item_bias: self.loss(X, y, self.mu, self.w, self.V, item_bias, self.item_embed))(self.item_bias)
+            if self.GAMMA_V:
+                self.V -= self.GAMMA_V * grad(lambda V: self.loss(X, y, self.mu, self.w, V, self.item_bias, self.item_embed))(self.V)
+                self.item_embed -= self.GAMMA_V * grad(lambda item_embed: self.loss(X, y, self.mu, self.w, self.V, self.item_bias, item_embed))(self.item_embed)
+                
+            # print(self.predict(X))
+
     def fit(self, X, y):
         # pywFM and libFM
         
@@ -58,14 +81,17 @@ class OMIRT:
             gradient = grad(lambda w: self.loss(X, y, self.mu, w, self.V))(self.w)
             # print('grad', gradient.shape)
             self.w -= self.GAMMA * gradient
-            self.V -= self.GAMMA * grad(lambda V: self.loss(X, y, self.mu, self.w, V))(self.V)
+            if self.GAMMA_V:
+                self.V -= self.GAMMA_V * grad(lambda V: self.loss(X, y, self.mu, self.w, V))(self.V)
             # print(self.predict(X))
-
-    def predict(self, X, mu=None, w=None, V=None):
+            
+    def predict(self, X, mu=None, w=None, V=None, item_bias=None, item_embed=None):
         if mu is None:
             mu = self.mu
             w = self.w
             V = self.V
+            item_bias = self.item_bias
+            item_embed = self.item_embed
 
         users = X[:, 0]
         items = X[:, 1]
@@ -96,16 +122,30 @@ class OMIRT:
         for x, outcome in zip(X, y):
             pred = self.predict(x.reshape(-1, 2))
             # print('update', x, pred, outcome)
-            self.y_pred.append(pred)
+            self.y_pred.append(pred.item())
             self.fit(x.reshape(-1, 2), outcome)
             # print(self.w.sum(), self.item_embed.sum())
         print(roc_auc_score(y, self.y_pred))
 
-    def loss(self, X, y, mu, w, V):
-        pred = self.predict(X, mu, w, V)
+    def loss(self, X, y, mu, w, V, bias, embed):
+        pred = self.predict(X, mu, w, V, bias, embed)
         return log_loss(y, pred) + self.LAMBDA * (
             mu ** 2 + np.sum(w ** 2) +
             np.sum(V ** 2))
+
+    def save_results(self, model, y_test):
+        iso_date = datetime.now().isoformat()
+        self.predictions.append({
+            'fold': 0,
+            'pred': self.y_pred,
+            'y': y_test.tolist()
+        })
+        with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
+            json.dump({
+                'description': 'OMIRT',
+                'predictions': self.predictions,
+                'model': model  # Possibly add a checksum of the fold in the future
+            }, f)
 
 
 if __name__ == '__main__':
@@ -113,7 +153,11 @@ if __name__ == '__main__':
     parser.add_argument('X_file', type=str, nargs='?', default='dummy')
     parser.add_argument('--iter', type=int, nargs='?', default=200)
     parser.add_argument('--d', type=int, nargs='?', default=20)
+    parser.add_argument('--lr', type=float, nargs='?', default=1.)
+    parser.add_argument('--lr2', type=float, nargs='?', default=0.)
+    parser.add_argument('--small', type=bool, nargs='?', const=True, default=False)
     options = parser.parse_args()
+    print(vars(options))
 
     if options.X_file == 'dummy':
         ofm = OMIRT(n_users=10, n_items=5, d=3)
@@ -148,7 +192,7 @@ if __name__ == '__main__':
     y_trains = {}
     X_tests = {}
     y_tests = {}
-    folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
+    folds = glob.glob(os.path.join(folder, 'folds/weak{}fold*.npy'.format(nb_samples)))
     if folds:
         for i, filename in enumerate(folds):
             i_test = np.load(filename)
@@ -156,7 +200,8 @@ if __name__ == '__main__':
             i_train = list(set(range(nb_samples)) - set(i_test))
             X_trains[i] = X[i_train]
             y_trains[i] = y[i_train]
-            i_test = i_test[:5000]  # Try on 50 first test samples
+            if options.small:
+                i_test = i_test[:5000]  # Try on 50 first test samples
             X_tests[i] = X[i_test]
             y_tests[i] = y[i_test]
 
@@ -170,11 +215,19 @@ if __name__ == '__main__':
                                                             shuffle=False)
 
     n = X_train.shape[1]
-    ofm = OMIRT(config['nb_users'], config['nb_items'], options.d)
-    # ofm.fit(X_train, y_train)
-    ofm.load(folder)
+    ofm = OMIRT(config['nb_users'], config['nb_items'], options.d,
+                gamma=options.lr, gamma_v=options.lr2)
+    ofm.full_fit(X_train, y_train)
+    # ofm.load(folder)
+    y_pred = ofm.predict(X_train)
+    print('train auc', roc_auc_score(y_train, y_pred))
 
     y_pred = ofm.predict(X_test)
-    print('auc', roc_auc_score(y_test, y_pred))
+    print(X_test[:5])
+    print(y_test[:5])
+    print(y_pred[:5])
+    print('test auc', roc_auc_score(y_test, y_pred))
     
-    ofm.update(X_test, y_test)
+    # ofm.update(X_test, y_test)
+    if len(X_test) > 10000:
+        ofm.save_results(vars(options), y_test)
