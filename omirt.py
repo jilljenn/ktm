@@ -81,9 +81,9 @@ class OMIRT:
         # pywFM and libFM
         print('full relaxed fit', X.shape, y.shape)
         
-        for _ in range(200):
+        for _ in range(500):
             if _ % 10 == 0:
-                print('auc', self.relaxed_auc(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed), self.w.sum(), self.item_bias.sum(), self.w[:5])
+                print('auc', self.relaxed_auc(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed), self.w.sum(), self.item_bias.sum(), self.item_bias[:5])
             # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
             gradient = grad(lambda w: self.relaxed_auc(X, y, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
             # print('grad', gradient.shape, gradient)
@@ -160,7 +160,7 @@ class OMIRT:
         n = len(y)
         for i, j in random.sample(all_pairs, 100):
             auc += sigmoid((pred[i] - pred[j]) * (y_batch[i] - y_batch[j]))
-        return auc - self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2))
+        return auc - self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
 
     def save_results(self, model, y_test):
         iso_date = datetime.now().isoformat()
