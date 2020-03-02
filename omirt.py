@@ -211,7 +211,8 @@ if __name__ == '__main__':
         config = yaml.load(f)
         print(config)
 
-    df = pd.read_csv(X_file)
+    df = pd.read_csv(X_file, sep='\t')
+    #df = pd.read_csv(X_file)
     X = np.array(df[['user_id', 'item_id']])
     y = np.array(df['correct'])
     nb_samples = len(y)

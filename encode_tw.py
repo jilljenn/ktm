@@ -20,6 +20,7 @@ options = parser.parse_args()
 dt = time.time()
 os.chdir('data/{}'.format(options.dataset))
 full = pd.read_csv('needed.csv')  # Only 176.7 MB for ASSISTments 2012 (3 GB)
+#full = pd.read_csv('preprocessed_data.csv',sep="\t")
 if 'skill_id' in full.columns:
     full['skill_id'] = full['skill_id'].astype(pd.Int64Dtype())  # Can be NaN
 

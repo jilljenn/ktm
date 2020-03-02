@@ -36,6 +36,8 @@ else:
 
 if options.slicing_friendly:
 	assist09_w_time = assist09_w_time[['user_id', 'problem_id', 'skill_id', 'correct', 'timestamp', 'school_id', 'teacher_id']]
+	assist09_w_time["school_id"] = np.unique(assist09_w_time["school_id"], return_inverse=True)[1]
+	assist09_w_time["teacher_id"] = np.unique(assist09_w_time["teacher_id"], return_inverse=True)[1]
 else:
 	assist09_w_time = assist09_w_time[['user_id', 'problem_id', 'skill_id', 'correct', 'timestamp']]
 

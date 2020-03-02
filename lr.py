@@ -6,6 +6,7 @@ from scipy.sparse import load_npz
 from datetime import datetime
 from eval_metrics import avgstd
 import numpy as np
+import pandas as pd
 import os.path
 import math
 import glob
@@ -13,6 +14,12 @@ import time
 import json
 import sys
 
+SENSITIVE_ATTR = "school_id"
+
+df = pd.read_csv("data/assist09/preprocessed_data.csv",sep="\t")
+df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('nunique')
+#df["weight"] = df["weight"] / len(df["user_id"].unique())
+df["weight"] = 1 / df["weight"]
 
 FULL = False
 X_file = sys.argv[1]
@@ -26,6 +33,7 @@ print(X.shape, y.shape)
 
 # Are folds fixed already?
 X_trains = {}
+weights_train = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
@@ -39,6 +47,8 @@ if folds:
         y_trains[i] = y[i_train]
         X_tests[i] = X[i_test]
         y_tests[i] = y[i_test]
+        weights_train[i] = np.array(df["weight"])[i_train]
+        #weights_test[i] = np.array(df["weight"])[i_test]
 elif FULL:
     X_trains[0] = X
     X_tests[0] = X
@@ -60,7 +70,8 @@ for i in X_trains:
                                         y_trains[i], y_tests[i])
     model = LogisticRegression(solver='liblinear')  # Has L2 regularization by default
     dt = time.time()
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, sample_weight=weights_train[i])
+    #model.fit(X_train, y_train)
     print('[time] Training', time.time() - dt, 's')
 
     for dataset, X, y in [('Train', X_train, y_train),
