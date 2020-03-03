@@ -35,7 +35,7 @@ class OMIRT:
         self.d = d
         self.GAMMA = gamma
         self.GAMMA_V = gamma_v
-        self.LAMBDA = 1.
+        self.LAMBDA = 0.0
         self.mu = 0.
         # self.w = np.random.random(n_users + n_items)
         # self.V = np.random.random((n_users + n_items, d))
@@ -145,6 +145,7 @@ class OMIRT:
     
     def update(self, X, y):
         s = len(X)
+        self.y_pred = []
         for x, outcome in zip(X, y):
             pred = self.predict(x.reshape(-1, 2))
             # print('update', x, pred, outcome)
@@ -219,7 +220,8 @@ if __name__ == '__main__':
         config = yaml.load(f)
         print(config)
 
-    df = pd.read_csv(X_file, sep='\t')
+    df = pd.read_csv(X_file)
+    print(df.head())
     #df = pd.read_csv(X_file)
     X = np.array(df[['user_id', 'item_id']])
     y = np.array(df['correct'])
@@ -269,6 +271,6 @@ if __name__ == '__main__':
     print(y_pred[:5])
     print('test auc', roc_auc_score(y_test, y_pred))
     
-    # ofm.update(X_test, y_test)
-    """if len(X_test) > 10000:
-        ofm.save_results(vars(options), y_test)"""
+    ofm.update(X_test, y_test)
+    if len(X_test) > 10000:
+        ofm.save_results(vars(options), y_test)
