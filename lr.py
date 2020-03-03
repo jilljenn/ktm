@@ -13,6 +13,7 @@ import glob
 import time
 import json
 import sys
+import yaml
 
 SENSITIVE_ATTR = "school_id"
 
@@ -31,13 +32,21 @@ nb_samples, _ = X.shape
 y = np.load(y_file).astype(np.int32)
 print(X.shape, y.shape)
 
+# Know number of users
+with open(os.path.join(folder, 'config.yml')) as f:
+    config = yaml.load(f)
+    X_users = X[:, :config['nb_users']]
+    print(X_users.shape)
+    assert all(X_users.sum(axis=1) == 1)
+    # sys.exit(0)
+
 # Are folds fixed already?
 X_trains = {}
 weights_train = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
-folds = glob.glob(os.path.join(folder, 'folds/weak{}fold*.npy'.format(nb_samples)))
+folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
 if folds:
     for i, filename in enumerate(folds):
         i_test = np.load(filename)
@@ -70,8 +79,24 @@ for i in X_trains:
                                         y_trains[i], y_tests[i])
     model = LogisticRegression(solver='liblinear')  # Has L2 regularization by default
     dt = time.time()
-    model.fit(X_train, y_train, sample_weight=weights_train[i])
-    #model.fit(X_train, y_train)
+
+    # weights_train[i] should contain the same value as sample_weights
+    
+    nb_samples = len(y_train)
+    nb_users = config['nb_users']
+    
+    X_train_users = X_train[:, :config['nb_users']]
+    nb_samples_per_user = X_train_users.sum(axis=0).A1
+    nb_samples_per_user[nb_samples_per_user == 0] = 1
+    print(X_train_users.shape)
+    print(nb_samples_per_user.shape)
+    print((X_train_users @ (1 / nb_samples_per_user)).shape)
+    # sample_weights = np.ones(nb_samples)
+    print(nb_samples / nb_users / nb_samples_per_user)
+    sample_weights = X_train_users @ (nb_samples / nb_users / nb_samples_per_user)
+    
+    model.fit(X_train, y_train, sample_weight=sample_weights)
+
     print('[time] Training', time.time() - dt, 's')
 
     for dataset, X, y in [('Train', X_train, y_train),

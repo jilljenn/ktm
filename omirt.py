@@ -1,5 +1,5 @@
 from scipy.sparse import csr_matrix
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, log_loss as ll
 from sklearn.model_selection import train_test_split
 from itertools import combinations
 from autograd import grad
@@ -17,10 +17,12 @@ import random
 
 
 all_pairs = list(combinations(range(100), 2))
+EPS = 1e-15
 
 
 def log_loss(y, pred):
-    return -(y * np.log(pred) + (1 - y) * np.log(1 - pred)).sum()
+    this_pred = np.clip(pred, EPS, 1 - EPS)
+    return -(y * np.log(this_pred) + (1 - y) * np.log(1 - this_pred)).sum()
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
@@ -33,7 +35,7 @@ class OMIRT:
         self.d = d
         self.GAMMA = gamma
         self.GAMMA_V = gamma_v
-        self.LAMBDA = 0.01
+        self.LAMBDA = 1.
         self.mu = 0.
         # self.w = np.random.random(n_users + n_items)
         # self.V = np.random.random((n_users + n_items, d))
@@ -65,12 +67,15 @@ class OMIRT:
         
         for _ in range(500):
             if _ % 10 == 0:
-                print(self.loss(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed), self.w.sum(), self.item_bias.sum())
+                pred = self.predict(X)
+                print('loss', ll(y, pred))
+                print(self.loss(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed) / len(y), self.w.sum(), self.item_bias.sum())
             # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
             gradient = grad(lambda w: self.loss(X, y, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
             # print('grad', gradient.shape)
             self.w -= self.GAMMA * gradient
             self.item_bias -= self.GAMMA * grad(lambda item_bias: self.loss(X, y, self.mu, self.w, self.V, item_bias, self.item_embed))(self.item_bias)
+            
             if self.GAMMA_V:
                 self.V -= self.GAMMA_V * grad(lambda V: self.loss(X, y, self.mu, self.w, V, self.item_bias, self.item_embed))(self.V)
                 self.item_embed -= self.GAMMA_V * grad(lambda item_embed: self.loss(X, y, self.mu, self.w, self.V, self.item_bias, item_embed))(self.item_embed)
@@ -81,9 +86,11 @@ class OMIRT:
         # pywFM and libFM
         print('full relaxed fit', X.shape, y.shape)
         
-        for _ in range(500):
-            if _ % 10 == 0:
-                print('auc', self.relaxed_auc(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed), self.w.sum(), self.item_bias.sum(), self.item_bias[:5])
+        for _ in range(1000):
+            if _ % 20 == 0:
+                pred = self.predict(X)
+                print('score', self.relaxed_auc(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed), self.w.sum(), self.item_bias.sum(), self.item_bias[:5])
+                print('auc', roc_auc_score(y, pred))
             # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
             gradient = grad(lambda w: self.relaxed_auc(X, y, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
             # print('grad', gradient.shape, gradient)
@@ -104,7 +111,7 @@ class OMIRT:
             gradient = grad(lambda w: self.loss(X, y, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
             # print('grad', gradient.shape)
             self.w -= 1 * gradient
-            self.GAMMA_V = 0.1
+            self.GAMMA_V = 0.1 
             if self.GAMMA_V:
                 self.V -= self.GAMMA_V * grad(lambda V: self.loss(X, y, self.mu, self.w, V, self.item_bias, self.item_embed))(self.V)
             # print(self.predict(X))
@@ -150,6 +157,7 @@ class OMIRT:
         pred = self.predict(X, mu, w, V, bias, embed)
         return log_loss(y, pred) + self.LAMBDA * (
             mu ** 2 + np.sum(w ** 2) +
+            np.sum(bias ** 2) + np.sum(embed ** 2) +
             np.sum(V ** 2))
 
     def relaxed_auc(self, X, y, mu, w, V, bias, embed):
@@ -160,7 +168,7 @@ class OMIRT:
         n = len(y)
         for i, j in random.sample(all_pairs, 100):
             auc += sigmoid((pred[i] - pred[j]) * (y_batch[i] - y_batch[j]))
-        return auc - self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
+        return auc / 100 - self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
 
     def save_results(self, model, y_test):
         iso_date = datetime.now().isoformat()
@@ -222,7 +230,7 @@ if __name__ == '__main__':
     y_trains = {}
     X_tests = {}
     y_tests = {}
-    folds = glob.glob(os.path.join(folder, 'folds/weak{}fold*.npy'.format(nb_samples)))
+    folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
     if folds:
         for i, filename in enumerate(folds):
             i_test = np.load(filename)
@@ -247,19 +255,20 @@ if __name__ == '__main__':
     n = X_train.shape[1]
     ofm = OMIRT(config['nb_users'], config['nb_items'], options.d,
                 gamma=options.lr, gamma_v=options.lr2)
-    ofm.full_relaxed_fit(X_train, y_train)
-    # ofm.full_fit(X_train, y_train)
+    # ofm.full_relaxed_fit(X_train, y_train)
+    ofm.full_fit(X_train, y_train)
     
     # ofm.load(folder)
     y_pred = ofm.predict(X_train)
     print('train auc', roc_auc_score(y_train, y_pred))
 
     y_pred = ofm.predict(X_test)
+    ofm.y_pred = y_pred.tolist()  # Save for future use
     print(X_test[:5])
     print(y_test[:5])
     print(y_pred[:5])
     print('test auc', roc_auc_score(y_test, y_pred))
     
-    ofm.update(X_test, y_test)
-    if len(X_test) > 10000:
-        ofm.save_results(vars(options), y_test)
+    # ofm.update(X_test, y_test)
+    """if len(X_test) > 10000:
+        ofm.save_results(vars(options), y_test)"""

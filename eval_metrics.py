@@ -1,5 +1,5 @@
 import glob
-from sklearn.metrics import roc_auc_score, ndcg_score
+from sklearn.metrics import roc_auc_score, ndcg_score, log_loss
 from collections import defaultdict
 from scipy.stats import sem, t
 import pandas as pd
@@ -7,8 +7,11 @@ import numpy as np
 import json
 import re
 import os
+import sys
+
 
 SENSITIVE_ATTR = "school_id"
+
 
 def avgstd(l):
     '''
@@ -26,11 +29,12 @@ def avgstd(l):
 
 
 if __name__ == '__main__':
-    # os.chdir('data/assist09')
-    os.chdir('data/fr_en')
+    os.chdir('data/assist09')
+    # os.chdir('data/fr_en')
 
-    # indices = np.load('folds/278607fold0.npy')
-    indices = np.load('folds/weak926646fold0.npy')
+    # indices = np.load('folds/weak278607fold0.npy')
+    indices = np.load('folds/278607fold0.npy')
+    # indices = np.load('folds/weak926646fold0.npy')
     print(len(indices))
 
     df = pd.read_csv('preprocessed_data.csv',sep="\t")
@@ -43,6 +47,7 @@ if __name__ == '__main__':
         predictions_per_sensitive_attr = defaultdict(lambda: defaultdict(list))
         metrics_per_user = defaultdict(list)
         metrics_per_sensitive_attr = defaultdict(list)
+
         m = r.search(filename)
         print(filename)
         dt = m.group(1)
@@ -59,13 +64,21 @@ if __name__ == '__main__':
         y_pred = results['predictions'][0]['pred']
         y = results['predictions'][0]['y']
 
+        try:
+            assert len(y) == len(indices)
+        except AssertionError:
+            print('This is not the right fold')
+            sys.exit(0)
+
         for user, pred, true in zip(test['user_id'], y_pred, y):
             predictions_per_user[user]['pred'].append(pred)
             predictions_per_user[user]['y'].append(true)
 
+        """
         for attr, pred, true in zip(test[SENSITIVE_ATTR], y_pred, y):
             predictions_per_sensitive_attr[attr]['pred'].append(pred)
             predictions_per_sensitive_attr[attr]['y'].append(true)            
+        """
 
         users_ids = []
         attr_ids = []
@@ -75,6 +88,8 @@ if __name__ == '__main__':
             this_true = np.array(predictions_per_user[user]['y'])
             if len(this_pred) > 1:
                 users_ids.append(user)
+                # print(this_true)
+                metrics_per_user['nll'].append(log_loss(this_true, this_pred, labels=[0, 1]))
                 metrics_per_user['ndcg'].append(ndcg_score([this_true], [this_pred]))
                 metrics_per_user['ndcg@10'].append(ndcg_score([this_true], [this_pred], k=10))
                 metrics_per_user['ndcg-'].append(ndcg_score([1 - this_true], [1 - this_pred]))
@@ -98,8 +113,10 @@ if __name__ == '__main__':
         print('Test length', len(y))
         print(y[:10], test[:10])
 
-        print('overall auc', roc_auc_score(y, y_pred))
-        print('auc', avgstd(metrics_per_user['auc']))
+        print('overall auc', np.round(roc_auc_score(y, y_pred), 3))
+        print('overall nll', np.round(log_loss(y, y_pred), 3))
+        print('sliced auc', avgstd(metrics_per_user['auc']))
+        print('sliced nll', avgstd(metrics_per_user['nll']))
         print('ndcg', avgstd(metrics_per_user['ndcg']))
         print('ndcg@10', avgstd(metrics_per_user['ndcg@10']))
         print('ndcg-', avgstd(metrics_per_user['ndcg-']))
@@ -124,4 +141,3 @@ if __name__ == '__main__':
                                                          np.array(attr_ids)[best_indices]))
         print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmax(metrics_per_sensitive_attr['auc'])]]['y']))
         print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmax(metrics_per_sensitive_attr['auc'])]]['pred']))
-
