@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 import argparse
+import os
+
 
 parser = argparse.ArgumentParser(description='Prepare datasets.')
 parser.add_argument('--min_interactions', type=int, nargs='?', default=10)
@@ -10,10 +12,11 @@ parser.add_argument('--slicing_friendly', type=bool, nargs='?', const=True, defa
 options = parser.parse_args()
 
 
-assist09 = pd.read_csv("assistments09/skill_builder_data_corrected_collapsed.csv",
+os.chdir('assist09')
+assist09 = pd.read_csv("skill_builder_data_corrected_collapsed.csv",
 						encoding = "ISO-8859-1", index_col=False)
 assist09.drop(['Unnamed: 0'], axis=1, inplace=True)
-timestamps = pd.read_csv("assistments09/timestamp_data.csv")
+timestamps = pd.read_csv("timestamp_data.csv")
 
 assist09_w_time = assist09.merge(timestamps, left_on="order_id", right_on="problem_log_id",
 								 how="inner")
@@ -70,5 +73,5 @@ assist09_w_time = assist09_w_time[assist09_w_time.correct.isin([0,1])] # Remove 
 assist09_w_time['correct'] = assist09_w_time['correct'].astype(np.int32) # Cast outcome as int32
 
 # Save data
-sparse.save_npz("assistments09/q_mat.npz", sparse.csr_matrix(Q_mat))
-assist09_w_time.to_csv("assistments09/needed.csv", index=False)
+sparse.save_npz("q_mat.npz", sparse.csr_matrix(Q_mat))
+assist09_w_time.to_csv("needed.csv", index=False)

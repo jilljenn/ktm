@@ -35,7 +35,9 @@ X_trains = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
-folds = glob.glob(os.path.join(folder, 'folds/weak{}fold*.npy'.format(nb_samples)))
+FOLD = 'strong'
+folds = glob.glob(os.path.join(folder, 'folds/50weak{}fold*.npy'.format(nb_samples)))
+
 if folds:
     for i, filename in enumerate(folds):
         i_test = np.load(filename)
@@ -90,7 +92,8 @@ with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
     json.dump({
         'predictions': predictions,
         'model': vars(options),
-        'mu': model.global_bias
+        'mu': model.global_bias,
+        'folds': FOLD
     }, f)
 
 print(model.keys())

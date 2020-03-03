@@ -5,7 +5,7 @@ import random
 import os.path
 
 
-def save_folds(full, nb_folds=5, weakness=0.2):
+def save_folds(full, nb_folds=5, weakness=0.5):
     nb_samples = len(full)
     all_users = full['user_id'].unique()
     random.shuffle(all_users)
@@ -19,7 +19,7 @@ def save_folds(full, nb_folds=5, weakness=0.2):
         n_samples = len(fold)
         fold = fold[round(weakness * n_samples):]
         np.save('folds/{}{}fold{}.npy'.format(
-            'weak' if weakness > 0 else '', nb_samples, i), fold)
+            '{}weak'.format(round(100 * weakness)) if weakness > 0 else '', nb_samples, i), fold)
     assert sorted(everything) == list(range(nb_samples))
 
 

@@ -33,16 +33,20 @@ if __name__ == '__main__':
     # os.chdir('data/fr_en')
 
     # indices = np.load('folds/weak278607fold0.npy')
-    indices = np.load('folds/278607fold0.npy')
+    # indices = np.load('folds/278607fold0.npy')
+    # indices = np.load('folds/50weak278607fold0.npy')
     # indices = np.load('folds/weak926646fold0.npy')
+    # indices = np.load('folds/1199731fold0.npy')
+    indices = np.load('folds/50weak278344fold0.npy')
     print(len(indices))
 
-    df = pd.read_csv('preprocessed_data.csv',sep="\t")
+    df = pd.read_csv('needed.csv')
     test = df.iloc[indices]
 
     r = re.compile(r'results-(.*).json')
 
-    for filename in sorted(glob.glob('results*2020*'))[::-1][:2]:
+    ndcg_ = defaultdict(list)
+    for filename in sorted(glob.glob('results*2020*'))[::-1][:3]:
         predictions_per_user = defaultdict(lambda: defaultdict(list))
         predictions_per_sensitive_attr = defaultdict(lambda: defaultdict(list))
         metrics_per_user = defaultdict(list)
@@ -55,10 +59,8 @@ if __name__ == '__main__':
         with open(filename) as f:
             results = json.load(f)
 
-        if 'model' in results:
-            print(results['model'])
-        else:
-            print('LR')
+        model = 'LR' if results['model'] == 'LR' else 'FM' + str(len(str(results['model'])))
+        print(model)
             
         fold = results['predictions'][0]['fold']
         y_pred = results['predictions'][0]['pred']
@@ -74,15 +76,12 @@ if __name__ == '__main__':
             predictions_per_user[user]['pred'].append(pred)
             predictions_per_user[user]['y'].append(true)
 
-        """
         for attr, pred, true in zip(test[SENSITIVE_ATTR], y_pred, y):
             predictions_per_sensitive_attr[attr]['pred'].append(pred)
             predictions_per_sensitive_attr[attr]['y'].append(true)            
-        """
 
         users_ids = []
         attr_ids = []
-        ndcg_ = []
         for user in predictions_per_user:
             this_pred = np.array(predictions_per_user[user]['pred'])
             this_true = np.array(predictions_per_user[user]['y'])
@@ -93,7 +92,7 @@ if __name__ == '__main__':
                 metrics_per_user['ndcg'].append(ndcg_score([this_true], [this_pred]))
                 metrics_per_user['ndcg@10'].append(ndcg_score([this_true], [this_pred], k=10))
                 metrics_per_user['ndcg-'].append(ndcg_score([1 - this_true], [1 - this_pred]))
-                ndcg_.append(ndcg_score([1 - this_true], [1 - this_pred]))
+                ndcg_[model].append(ndcg_score([1 - this_true], [1 - this_pred]))
                 metrics_per_user['ndcg@10-'].append(ndcg_score([1 - this_true], [1 -this_pred], k=10))
             if len(np.unique(this_true)) > 1:
                 metrics_per_user['auc'].append(roc_auc_score(this_true, this_pred))
@@ -123,12 +122,18 @@ if __name__ == '__main__':
         print('ndcg@10-', avgstd(metrics_per_user['ndcg@10-']))
 
         # Display ids of the students that have the lowest/highest ndcg-
-        print("Lowest NDCG- = {} on user {}".format(np.around(np.min(ndcg_),5),users_ids[np.argmin(ndcg_)]))
+        print("Lowest NDCG- = {} on user {}".format(np.around(np.min(ndcg_[model]),5),users_ids[np.argmin(ndcg_[model])]))
         print(np.array(predictions_per_user[users_ids[np.argmin(ndcg_)]]['y']))
         print(np.array(predictions_per_user[users_ids[np.argmin(ndcg_)]]['pred']))
-        print("Highest NDCG- = {} on user {}".format(np.around(np.max(ndcg_),5),users_ids[np.argmax(ndcg_)]))
+        print("Highest NDCG- = {} on user {}".format(np.around(np.max(ndcg_[model]),5),users_ids[np.argmax(ndcg_[model])]))
         print(np.array(predictions_per_user[users_ids[np.argmax(ndcg_)]]['y']))
         print(np.array(predictions_per_user[users_ids[np.argmax(ndcg_)]]['pred']))
+        
+        diff = abs(np.array(ndcg_[model]) - np.array(ndcg_['FM98']))
+        this_pos = np.argmax(diff)
+        this_user = users_ids[this_pos]
+        print("Biggest difference NDCG- = {} {}{} LR{} on user {}".format(np.max(diff), model, ndcg_[model][this_pos], ndcg_['FM98'][this_pos], this_user))
+        print(sorted(list(zip(predictions_per_user[this_user]['pred'], predictions_per_user[this_user]['y']))))
 
         # Display ids of the subgroups (sensitive attribute) that have the lowest/highest AUC
         worst_indices = np.argsort(metrics_per_sensitive_attr['auc'])[:5]

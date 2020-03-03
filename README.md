@@ -47,7 +47,7 @@ You can also download the [Assistments 2009 dataset](https://jiji.cat/weasel2018
 
 If you are lazy, you can also just do `make` and try to understand what is going on in the [Makefile](Makefile).
 
-### NEW! Encoding time windows
+### Encoding time windows
 
 Choffin et al. proposed the DAS3H model, and we implemented it using queues. This code is faster than the original KTM encoding.
 
@@ -74,10 +74,13 @@ For factorization machines of size *d* = 5:
     python fm.py --d 5 data/dummy/X-swf.npz
 	# Will save weights in w.npy and V.npy
 
-For an online MIRT model:
+NEW! For an online MIRT model:
 
     python omirt.py --d 0 data/assist09/needed.csv  # Will load LR: coef0.npy
 	python omirt.py --d 5 data/assist09/needed.csv  # Will load FM: w.npy and V.npy
+
+	# Will train a IRT model on Fraction dataset with learning rate 0.01
+	python omirt.py --d 0 data/fraction/needed.csv --lr 0.01 --lr2 0.
 
 ## Results
 

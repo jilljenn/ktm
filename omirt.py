@@ -35,7 +35,7 @@ class OMIRT:
         self.d = d
         self.GAMMA = gamma
         self.GAMMA_V = gamma_v
-        self.LAMBDA = 0.0
+        self.LAMBDA = 0.0#1
         self.mu = 0.
         # self.w = np.random.random(n_users + n_items)
         # self.V = np.random.random((n_users + n_items, d))
@@ -232,7 +232,7 @@ if __name__ == '__main__':
     y_trains = {}
     X_tests = {}
     y_tests = {}
-    folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
+    folds = glob.glob(os.path.join(folder, 'folds/50weak{}fold*.npy'.format(nb_samples)))
     if folds:
         for i, filename in enumerate(folds):
             i_test = np.load(filename)
@@ -258,9 +258,9 @@ if __name__ == '__main__':
     ofm = OMIRT(config['nb_users'], config['nb_items'], options.d,
                 gamma=options.lr, gamma_v=options.lr2)
     # ofm.full_relaxed_fit(X_train, y_train)
-    ofm.full_fit(X_train, y_train)
+    # ofm.full_fit(X_train, y_train)
     
-    # ofm.load(folder)
+    ofm.load(folder)
     y_pred = ofm.predict(X_train)
     print('train auc', roc_auc_score(y_train, y_pred))
 
