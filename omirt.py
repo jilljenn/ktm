@@ -16,7 +16,7 @@ import json
 import random
 
 
-all_pairs = list(combinations(range(100), 2))
+all_pairs = np.array(list(combinations(range(100), 2)))
 EPS = 1e-15
 
 
@@ -66,7 +66,7 @@ class OMIRT:
         print('full fit', X.shape, y.shape)
         
         for _ in range(500):
-            if _ % 10 == 0:
+            if _ % 100 == 0:
                 pred = self.predict(X)
                 print('loss', ll(y, pred))
                 print(self.loss(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed) / len(y), self.w.sum(), self.item_bias.sum())
@@ -86,8 +86,8 @@ class OMIRT:
         # pywFM and libFM
         print('full relaxed fit', X.shape, y.shape)
         
-        for _ in range(1000):
-            if _ % 20 == 0:
+        for _ in range(10000):
+            if _ % 500 == 0:
                 pred = self.predict(X)
                 print('score', self.relaxed_auc(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed), self.w.sum(), self.item_bias.sum(), self.item_bias[:5])
                 print('auc', roc_auc_score(y, pred))
@@ -167,9 +167,11 @@ class OMIRT:
         pred = self.predict_logits(X[batch], mu, w, V, bias, embed)
         auc = 0
         n = len(y)
-        for i, j in random.sample(all_pairs, 100):
-            auc += sigmoid((pred[i] - pred[j]) * (y_batch[i] - y_batch[j]))
-        return auc / 100 - self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
+        metabatch = np.random.choice(len(all_pairs), 100)
+        ii = all_pairs[metabatch][:, 0]
+        jj = all_pairs[metabatch][:, 1]
+        auc = sigmoid((pred[ii] - pred[jj]) * (y_batch[ii] - y_batch[jj])).sum()
+        return auc - self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
 
     def save_results(self, model, y_test):
         iso_date = datetime.now().isoformat()
@@ -194,6 +196,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr', type=float, nargs='?', default=1.)
     parser.add_argument('--lr2', type=float, nargs='?', default=0.)
     parser.add_argument('--small', type=bool, nargs='?', const=True, default=False)
+    parser.add_argument('--auc', type=bool, nargs='?', const=True, default=False)
     options = parser.parse_args()
     print(vars(options))
 
@@ -257,10 +260,12 @@ if __name__ == '__main__':
     n = X_train.shape[1]
     ofm = OMIRT(config['nb_users'], config['nb_items'], options.d,
                 gamma=options.lr, gamma_v=options.lr2)
-    # ofm.full_relaxed_fit(X_train, y_train)
-    # ofm.full_fit(X_train, y_train)
+    if options.auc:
+        ofm.full_relaxed_fit(X_train, y_train)
+    else:
+        ofm.full_fit(X_train, y_train)
     
-    ofm.load(folder)
+    # ofm.load(folder)
     y_pred = ofm.predict(X_train)
     print('train auc', roc_auc_score(y_train, y_pred))
 
