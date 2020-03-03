@@ -37,7 +37,7 @@ if __name__ == '__main__':
     # indices = np.load('folds/50weak278607fold0.npy')
     # indices = np.load('folds/weak926646fold0.npy')
     # indices = np.load('folds/1199731fold0.npy')
-    indices = np.load('folds/50weak278344fold0.npy')
+    indices = np.load('folds/50weak341791fold0.npy')
     print(len(indices))
 
     df = pd.read_csv('needed.csv')
@@ -114,7 +114,8 @@ if __name__ == '__main__':
 
         print('overall auc', np.round(roc_auc_score(y, y_pred), 3))
         print('overall nll', np.round(log_loss(y, y_pred), 3))
-        print('sliced auc', avgstd(metrics_per_user['auc']))
+        print('sliced auc (per user)', avgstd(metrics_per_user['auc']))
+        print('sliced auc (per group)', avgstd(metrics_per_sensitive_attr['auc']))
         print('sliced nll', avgstd(metrics_per_user['nll']))
         print('ndcg', avgstd(metrics_per_user['ndcg']))
         print('ndcg@10', avgstd(metrics_per_user['ndcg@10']))
@@ -129,20 +130,18 @@ if __name__ == '__main__':
         print(np.array(predictions_per_user[users_ids[np.argmax(ndcg_)]]['y']))
         print(np.array(predictions_per_user[users_ids[np.argmax(ndcg_)]]['pred']))
         
-        diff = abs(np.array(ndcg_[model]) - np.array(ndcg_['FM98']))
+        diff = abs(np.array(ndcg_[model]) - np.array(ndcg_['FM76']))
         this_pos = np.argmax(diff)
         this_user = users_ids[this_pos]
-        print("Biggest difference NDCG- = {} {}{} LR{} on user {}".format(np.max(diff), model, ndcg_[model][this_pos], ndcg_['FM98'][this_pos], this_user))
+        print("Biggest difference NDCG- = {} {}{} LR{} on user {}".format(np.max(diff), model, ndcg_[model][this_pos], ndcg_['FM76'][this_pos], this_user))
         print(sorted(list(zip(predictions_per_user[this_user]['pred'], predictions_per_user[this_user]['y']))))
 
         # Display ids of the subgroups (sensitive attribute) that have the lowest/highest AUC
-        worst_indices = np.argsort(metrics_per_sensitive_attr['auc'])[:5]
-        best_indices = np.argsort(metrics_per_sensitive_attr['auc'])[-5:][::-1]
-        print("Lowest AUCs = {} on subgroups {}".format(np.around(np.array(metrics_per_sensitive_attr['auc'])[worst_indices],5),
-                                                        np.array(attr_ids)[worst_indices]))
-        print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmin(metrics_per_sensitive_attr['auc'])]]['y']))
-        print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmin(metrics_per_sensitive_attr['auc'])]]['pred']))
-        print("Highest AUCs = {} on subgroups {}".format(np.around(np.array(metrics_per_sensitive_attr['auc'])[best_indices],5),
-                                                         np.array(attr_ids)[best_indices]))
-        print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmax(metrics_per_sensitive_attr['auc'])]]['y']))
-        print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmax(metrics_per_sensitive_attr['auc'])]]['pred']))
+        print("Lowest AUC = {} on subgroup {}".format(np.around(np.min(metrics_per_sensitive_attr['auc']),5),
+                                                      attr_ids[np.argmin(metrics_per_sensitive_attr['auc'])]))
+        print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmin(metrics_per_sensitive_attr['auc'])]]['y'])[:10])
+        print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmin(metrics_per_sensitive_attr['auc'])]]['pred'])[:10])
+        print("Highest AUC = {} on subgroup {}".format(np.around(np.max(metrics_per_sensitive_attr['auc']),5),
+                                                       attr_ids[np.argmax(metrics_per_sensitive_attr['auc'])]))
+        print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmax(metrics_per_sensitive_attr['auc'])]]['y'])[:10])
+        print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmax(metrics_per_sensitive_attr['auc'])]]['pred'])[:10])
