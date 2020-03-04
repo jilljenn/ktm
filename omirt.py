@@ -1,6 +1,7 @@
 from scipy.sparse import csr_matrix
 from sklearn.metrics import roc_auc_score, log_loss as ll
 from sklearn.model_selection import train_test_split
+from eval_metrics import all_metrics
 from itertools import combinations
 from autograd import grad
 import autograd.numpy as np
@@ -14,8 +15,11 @@ import yaml
 from datetime import datetime
 import json
 import random
+from tqdm import tqdm
 
 
+SENSITIVE_ATTR = 'school_id'
+THIS_GROUP = 13 # 42: AUC=0.8, 13 AUC=0.49
 all_pairs = np.array(list(combinations(range(100), 2)))
 EPS = 1e-15
 
@@ -29,7 +33,7 @@ def sigmoid(x):
 
 
 class OMIRT:
-    def __init__(self, n_users=10, n_items=5, d=3, gamma=1., gamma_v=0.):
+    def __init__(self, n_users=10, n_items=5, d=3, gamma=1., gamma_v=0., n_iter=1000, df=None, fair=False):
         self.n_users = n_users
         self.n_items = n_items
         self.d = d
@@ -46,7 +50,13 @@ class OMIRT:
         self.V = np.random.random((n_users, d))
         self.item_embed = np.random.random((n_items, d))
         # self.V2 = np.power(self.V, 2)
+        self.n_iter = n_iter
+        self.fair = fair
 
+        attribute = np.array(df[SENSITIVE_ATTR])
+        self.protected = np.argwhere(attribute == THIS_GROUP).reshape(-1)
+        self.unprotected = np.argwhere(attribute != THIS_GROUP).reshape(-1)
+        
     def load(self, folder):
         # Load mu
         if self.d == 0:
@@ -85,20 +95,31 @@ class OMIRT:
     def full_relaxed_fit(self, X, y):
         # pywFM and libFM
         print('full relaxed fit', X.shape, y.shape)
-        
-        for _ in range(10000):
-            if _ % 500 == 0:
+
+        c = 0
+        for step in tqdm(range(self.n_iter)):
+            if step % 500 == 0:
                 pred = self.predict(X)
                 print('score', self.relaxed_auc(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed), self.w.sum(), self.item_bias.sum(), self.item_bias[:5])
                 print('auc', roc_auc_score(y, pred))
+                print('auc_1', roc_auc_score(y[self.protected], pred[self.protected]))
+                print('auc_0', roc_auc_score(y[self.unprotected], pred[self.unprotected]))
+                print(c)
+
+            if step > 0 and step % 50 == 0:
+                # Actually on valid
+                auc_1 = self.relaxed_auc(X[self.protected], y[self.protected], self.mu, self.w, self.V, self.item_bias, self.item_embed)
+                auc_0 = self.relaxed_auc(X[self.unprotected], y[self.unprotected], self.mu, self.w, self.V, self.item_bias, self.item_embed)
+                c += np.sign(auc_1 - auc_0) * 0.01
+                c = np.clip(c, -1, 1)
             # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
-            gradient = grad(lambda w: self.relaxed_auc(X, y, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
+            gradient = grad(lambda w: self.auc_loss(X, y, c, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
             # print('grad', gradient.shape, gradient)
-            self.w += self.GAMMA * gradient
-            self.item_bias += self.GAMMA * grad(lambda item_bias: self.relaxed_auc(X, y, self.mu, self.w, self.V, item_bias, self.item_embed))(self.item_bias)
+            self.w -= self.GAMMA * gradient
+            self.item_bias -= self.GAMMA * grad(lambda item_bias: self.auc_loss(X, y, c, self.mu, self.w, self.V, item_bias, self.item_embed))(self.item_bias)
             if self.GAMMA_V:
-                self.V += self.GAMMA_V * grad(lambda V: self.relaxed_auc(X, y, self.mu, self.w, V, self.item_bias, self.item_embed))(self.V)
-                self.item_embed += self.GAMMA_V * grad(lambda item_embed: self.relaxed_auc(X, y, self.mu, self.w, self.V, self.item_bias, item_embed))(self.item_embed)
+                self.V -= self.GAMMA_V * grad(lambda V: self.auc_loss(X, y, c, self.mu, self.w, V, self.item_bias, self.item_embed))(self.V)
+                self.item_embed -= self.GAMMA_V * grad(lambda item_embed: self.auc_loss(X, y, c, self.mu, self.w, self.V, self.item_bias, item_embed))(self.item_embed)
                 
             # print(self.predict(X))
             
@@ -161,7 +182,18 @@ class OMIRT:
             np.sum(bias ** 2) + np.sum(embed ** 2) +
             np.sum(V ** 2))
 
+    def auc_loss(self, X, y, c, mu, w, V, bias, embed):
+        X_1 = X[self.protected]
+        y_1 = y[self.protected]
+        X_0 = X[self.unprotected]
+        y_0 = y[self.unprotected]
+        auc = self.relaxed_auc(X, y, mu, w, V, bias, embed)
+        auc_1 = self.relaxed_auc(X_1, y_1, mu, w, V, bias, embed)
+        auc_0 = self.relaxed_auc(X_0, y_0, mu, w, V, bias, embed)
+        return 100 - auc - auc_1 #self.fair * c * (auc_1 - auc_0) + self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
+
     def relaxed_auc(self, X, y, mu, w, V, bias, embed):
+        assert len(y) > 100
         batch = np.random.choice(len(y), 100)
         y_batch = y[batch]
         pred = self.predict_logits(X[batch], mu, w, V, bias, embed)
@@ -171,32 +203,35 @@ class OMIRT:
         ii = all_pairs[metabatch][:, 0]
         jj = all_pairs[metabatch][:, 1]
         auc = sigmoid((pred[ii] - pred[jj]) * (y_batch[ii] - y_batch[jj])).sum()
-        return auc - self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
+        return auc
 
-    def save_results(self, model, y_test):
+    def save_results(self, model, y_test, test):
         iso_date = datetime.now().isoformat()
         self.predictions.append({
             'fold': 0,
             'pred': self.y_pred,
             'y': y_test.tolist()
         })
+        saved_results = {
+            'description': 'OMIRT',
+            'predictions': self.predictions,
+            'model': model  # Possibly add a checksum of the fold in the future
+        }
         with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
-            json.dump({
-                'description': 'OMIRT',
-                'predictions': self.predictions,
-                'model': model  # Possibly add a checksum of the fold in the future
-            }, f)
+            json.dump(saved_results, f)
+        all_metrics(saved_results, test)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run OMIRT')
     parser.add_argument('X_file', type=str, nargs='?', default='dummy')
-    parser.add_argument('--iter', type=int, nargs='?', default=200)
     parser.add_argument('--d', type=int, nargs='?', default=20)
+    parser.add_argument('--iter', type=int, nargs='?', default=1000)
     parser.add_argument('--lr', type=float, nargs='?', default=1.)
     parser.add_argument('--lr2', type=float, nargs='?', default=0.)
     parser.add_argument('--small', type=bool, nargs='?', const=True, default=False)
     parser.add_argument('--auc', type=bool, nargs='?', const=True, default=False)
+    parser.add_argument('--fair', type=bool, nargs='?', const=True, default=False)
     options = parser.parse_args()
     print(vars(options))
 
@@ -229,7 +264,7 @@ if __name__ == '__main__':
     X = np.array(df[['user_id', 'item_id']])
     y = np.array(df['correct'])
     nb_samples = len(y)
-
+    
     # Are folds fixed already?
     X_trains = {}
     y_trains = {}
@@ -241,12 +276,15 @@ if __name__ == '__main__':
             i_test = np.load(filename)
             print('Fold', i, i_test.shape)
             i_train = list(set(range(nb_samples)) - set(i_test))
+
             X_trains[i] = X[i_train]
             y_trains[i] = y[i_train]
             if options.small:
                 i_test = i_test[:5000]  # Try on 50 first test samples
             X_tests[i] = X[i_test]
             y_tests[i] = y[i_test]
+
+            df_train = df.iloc[i_train]
 
 
     if X_trains:
@@ -259,7 +297,7 @@ if __name__ == '__main__':
 
     n = X_train.shape[1]
     ofm = OMIRT(config['nb_users'], config['nb_items'], options.d,
-                gamma=options.lr, gamma_v=options.lr2)
+                gamma=options.lr, gamma_v=options.lr2, n_iter=options.iter, df=df_train, fair=options.fair)
     if options.auc:
         ofm.full_relaxed_fit(X_train, y_train)
     else:
@@ -276,6 +314,9 @@ if __name__ == '__main__':
     print(y_pred[:5])
     print('test auc', roc_auc_score(y_test, y_pred))
     
-    ofm.update(X_test, y_test)
+    indices = np.load(folds[0])
+    test = df.iloc[indices]
+
+    # ofm.update(X_test, y_test)
     if len(X_test) > 10000:
-        ofm.save_results(vars(options), y_test)
+        ofm.save_results(vars(options), y_test, test)

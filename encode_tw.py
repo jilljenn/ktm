@@ -35,8 +35,10 @@ if full['user_id'].dtype == np.int64:  # We shift IDs to ensure that
 q_mat = defaultdict(list)
 nb_skills = None
 if 'skill_id' in full.columns:
+    print('Found a column skill_id')
     full['skill_id'] += shift_skills
-elif os.path.isfile('q_mat'):
+elif os.path.isfile('q_mat.npz'):
+    print('Found a q-matrix')
     q_matrix = load_npz('q_mat.npz')
     _, nb_skills = q_matrix.shape
     rows, cols, _ = find(q_matrix)
@@ -120,7 +122,7 @@ if options.tw:  # Build time windows features
     for i_sample, user, item_id, t, correct, skill_ids in zip(
            df['i'], df['user'], df['item_id'], df['timestamp'], df['correct'],
            df['skill_ids']):
-        for skill_id in skill_ids.split('~~') or q_mat[item_id]:  # Fallback
+        for skill_id in q_mat[item_id] or skill_ids.split('~~'):  # Fallback
             skill_id = int(skill_id)
             add(i_sample, codes[skill_id], 1)
             for pos, value in enumerate(q[user, skill_id].get_counters(t)):

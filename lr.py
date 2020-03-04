@@ -1,6 +1,7 @@
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, log_loss
+from eval_metrics import all_metrics
 from collections import defaultdict
 from scipy.sparse import load_npz
 from datetime import datetime
@@ -51,7 +52,7 @@ weights_train = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
-FOLD = 'strong'
+FOLD = '50weak'
 folds = glob.glob(os.path.join(folder, 'folds/50weak{}fold*.npy'.format(nb_samples)))
 if folds:
     print(folds)
@@ -146,9 +147,16 @@ for metric in results:
     print('{}: {}'.format(metric, avgstd(results[metric])))
 
 iso_date = datetime.now().isoformat()
+saved_results = {
+    'predictions': predictions,
+    'model': 'LR',
+    'folds': FOLD
+}
 with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
-    json.dump({
-        'predictions': predictions,
-        'model': 'LR',
-        'folds': FOLD
-    }, f)
+    json.dump(saved_results, f)
+
+df = pd.read_csv(os.path.join(folder, 'needed.csv'))
+indices = np.load(folds[0])
+test = df.iloc[indices]
+    
+all_metrics(saved_results, test)
