@@ -1,7 +1,9 @@
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, log_loss
+from eval_metrics import all_metrics
 from scipy.sparse import load_npz, vstack
 from datetime import datetime
+import pandas as pd
 import pywFM
 import argparse
 import numpy as np
@@ -17,7 +19,7 @@ os.environ['LIBFM_PATH'] = os.path.join(os.path.dirname(__file__),
 
 parser = argparse.ArgumentParser(description='Run FM')
 parser.add_argument('X_file', type=str, nargs='?')
-parser.add_argument('--iter', type=int, nargs='?', default=200)
+parser.add_argument('--iter', type=int, nargs='?', default=20)
 parser.add_argument('--d', type=int, nargs='?', default=20)
 parser.add_argument('--subset', type=int, nargs='?', default=0)
 options = parser.parse_args()
@@ -88,12 +90,17 @@ except ValueError:
 iso_date = datetime.now().isoformat()
 np.save(os.path.join(folder, 'w.npy'), np.array(model.weights))
 np.save(os.path.join(folder, 'V.npy'), model.pairwise_interactions)
+saved_results = {
+    'predictions': predictions,
+    'model': vars(options),
+    'mu': model.global_bias,
+    'folds': FOLD
+}
 with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
-    json.dump({
-        'predictions': predictions,
-        'model': vars(options),
-        'mu': model.global_bias,
-        'folds': FOLD
-    }, f)
+    json.dump(saved_results, f)
 
-print(model.keys())
+df = pd.read_csv(os.path.join(folder, 'needed.csv'))
+indices = np.load(folds[0])
+test = df.iloc[indices]
+    
+all_metrics(saved_results, test)

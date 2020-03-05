@@ -14,12 +14,15 @@ def save_folds(full, nb_folds=5, weakness=0.5):
     for i in range(nb_folds):
         upper_bound = (i + 1) * fold_size if i < nb_folds - 1 else len(all_users)
         ids_of_fold = set(all_users[i * fold_size:upper_bound])
-        fold = full.query('user_id in @ids_of_fold').index
-        everything += list(fold)
-        n_samples = len(fold)
-        fold = fold[round(weakness * n_samples):]
+        test_fold = []
+        for user_id in ids_of_fold:
+            fold = full.query('user_id == @user_id').sort_values('timestamp').index
+            everything += list(fold)
+            n_samples_user = len(fold)
+            fold = fold[round(weakness * n_samples_user):]
+            test_fold.extend(fold)
         np.save('folds/{}{}fold{}.npy'.format(
-            '{}weak'.format(round(100 * weakness)) if weakness > 0 else '', nb_samples, i), fold)
+            '{}weak'.format(round(100 * weakness)) if weakness > 0 else '', nb_samples, i), test_fold)
     assert sorted(everything) == list(range(nb_samples))
 
 

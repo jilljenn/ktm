@@ -19,12 +19,13 @@ import yaml
 
 SENSITIVE_ATTR = "school_id"
 
-"""
-df = pd.read_csv("data/assist09/preprocessed_data.csv",sep="\t")
-df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('nunique')
-#df["weight"] = df["weight"] / len(df["user_id"].unique())
+df = pd.read_csv("data/assist09/needed.csv")
+# df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('nunique')
+# df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('count')
+# df["weight"] = 1000 * (df[SENSITIVE_ATTR] % 2 == 1) + 1
+df["weight"] = 1
 df["weight"] = 1 / df["weight"]
-"""
+# sys.exit(0)
 
 FULL = False
 X_file = sys.argv[1] #options.X_file
@@ -37,18 +38,16 @@ y = np.load(y_file).astype(np.int32)
 print(X.shape, y.shape)
 
 # Know number of users
-"""
 with open(os.path.join(folder, 'config.yml')) as f:
     config = yaml.load(f)
     X_users = X[:, :config['nb_users']]
     print(X_users.shape)
     assert all(X_users.sum(axis=1) == 1)
     # sys.exit(0)
-"""
 
 # Are folds fixed already?
 X_trains = {}
-weights_train = {}
+sample_weights = {}
 y_trains = {}
 X_tests = {}
 y_tests = {}
@@ -64,7 +63,7 @@ if folds:
         y_trains[i] = y[i_train]
         X_tests[i] = X[i_test]
         y_tests[i] = y[i_test]
-        #weights_train[i] = np.array(df["weight"])[i_train]
+        sample_weights[i] = np.array(df["weight"])[i_train]
         #weights_test[i] = np.array(df["weight"])[i_test]
 elif FULL:
     X_trains[0] = X
@@ -91,10 +90,11 @@ for i in X_trains:
 
     # weights_train[i] should contain the same value as sample_weights
 
-    """
     nb_samples = len(y_train)
-    nb_users = config['nb_users']
+    # nb_users = config['nb_users']
+    nb_groups = df['school_id'].nunique()
     
+    """
     X_train_users = X_train[:, :config['nb_users']]
     nb_samples_per_user = X_train_users.sum(axis=0).A1
     nb_samples_per_user[nb_samples_per_user == 0] = 1
@@ -106,7 +106,7 @@ for i in X_trains:
     sample_weights = X_train_users @ (nb_samples / nb_users / nb_samples_per_user)
     """
     
-    model.fit(X_train, y_train)#, sample_weight=sample_weights)
+    model.fit(X_train, y_train, sample_weight=sample_weights[i])#nb_samples / nb_groups * sample_weights[i])
 
     print('[time] Training', time.time() - dt, 's')
 

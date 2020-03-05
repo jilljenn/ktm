@@ -1,4 +1,5 @@
 import glob
+import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score, ndcg_score, log_loss
 from collections import Counter, defaultdict
 from scipy.stats import sem, t
@@ -11,8 +12,7 @@ import sys
 
 
 SENSITIVE_ATTR = "school_id"
-THIS_GROUP = 13  # 42: AUC=0.8
-ATTR_ID = 5
+THIS_GROUP = 4  # 42: AUC=0.8
 
 
 def avgstd(l):
@@ -55,6 +55,8 @@ def all_metrics(results, test):
         predictions_per_user[user]['y'].append(true)
 
     attribute = np.array(test[SENSITIVE_ATTR])
+    # protected = np.argwhere(attribute % 2 == 0).reshape(-1)
+    # unprotected = np.argwhere(attribute % 2 == 1).reshape(-1)
     protected = np.argwhere(attribute == THIS_GROUP).reshape(-1)
     unprotected = np.argwhere(attribute != THIS_GROUP).reshape(-1)
     print(type(y))
@@ -103,16 +105,19 @@ def all_metrics(results, test):
     print('sliced auc (per user)', avgstd(metrics_per_user['auc']))
     print('sliced auc (per group)', avgstd(metrics_per_sensitive_attr['auc']))
     print('sliced nll', avgstd(metrics_per_user['nll']))
+
+    """
     print('ndcg', avgstd(metrics_per_user['ndcg']))
     print('ndcg@10', avgstd(metrics_per_user['ndcg@10']))
     print('ndcg-', avgstd(metrics_per_user['ndcg-']))
     print('ndcg@10-', avgstd(metrics_per_user['ndcg@10-']))
+    """
 
     # Display ids of the students that have the lowest/highest ndcg-
-    print("Lowest NDCG- = {} on user {}".format(np.around(np.min(ndcg_[model]),5),users_ids[np.argmin(ndcg_[model])]))
+    # print("Lowest NDCG- = {} on user {}".format(np.around(np.min(ndcg_[model]),5),users_ids[np.argmin(ndcg_[model])]))
     # print(np.array(predictions_per_user[users_ids[np.argmin(ndcg_)]]['y']))
     # print(np.array(predictions_per_user[users_ids[np.argmin(ndcg_)]]['pred']))
-    print("Highest NDCG- = {} on user {}".format(np.around(np.max(ndcg_[model]),5),users_ids[np.argmax(ndcg_[model])]))
+    # print("Highest NDCG- = {} on user {}".format(np.around(np.max(ndcg_[model]),5),users_ids[np.argmax(ndcg_[model])]))
     # print(np.array(predictions_per_user[users_ids[np.argmax(ndcg_)]]['y']))
     # print(np.array(predictions_per_user[users_ids[np.argmax(ndcg_)]]['pred']))
 
@@ -125,11 +130,20 @@ def all_metrics(results, test):
     """
 
     candidates = Counter()
+    val = 0
     for subgroup, auc, nb in zip(attr_ids, metrics_per_sensitive_attr['auc'], nb_samples):
         candidates[subgroup] = (-auc, -nb)
 
-    for k, v in candidates.most_common(10):
-        print(k, v)
+    x = []
+    nb = []
+    for k, (xi, yi) in candidates.most_common():
+        if val < 5:
+            print(k, (-xi, -yi))
+        x.append(-xi)
+        nb.append(-yi)
+        val += 1
+    plt.stem(x, nb, use_line_collection=True)
+    plt.show()
 
     # Display ids of the subgroups (sensitive attribute) that have the lowest/highest AUC
     print("Lowest AUC = {} on subgroup {}".format(np.around(np.min(metrics_per_sensitive_attr['auc']),5),
@@ -166,7 +180,7 @@ if __name__ == '__main__':
     # r = re.compile(r'results-(.*).json')
 
     # ndcg_ = defaultdict(list)
-    for filename in sorted(glob.glob('results*2020*'))[::-1][:3]:
+    for filename in sorted(glob.glob('results*2020*'))[::-1][:1]:
 
         print(filename)
         
