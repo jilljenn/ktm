@@ -5,7 +5,11 @@ import random
 import os.path
 
 
-def save_folds(full, nb_folds=5, weakness=0.5):
+VALID = 0.36  # Valid is 40% of train (= 24%), so starts from 36%
+TEST = 0.6    # Test is 40%, so from 60%
+
+
+def save_folds(full, nb_folds=5):
     nb_samples = len(full)
     all_users = full['user_id'].unique()
     random.shuffle(all_users)
@@ -15,14 +19,15 @@ def save_folds(full, nb_folds=5, weakness=0.5):
         upper_bound = (i + 1) * fold_size if i < nb_folds - 1 else len(all_users)
         ids_of_fold = set(all_users[i * fold_size:upper_bound])
         test_fold = []
+        valid_fold = []
         for user_id in ids_of_fold:
             fold = full.query('user_id == @user_id').sort_values('timestamp').index
             everything += list(fold)
             n_samples_user = len(fold)
-            fold = fold[round(weakness * n_samples_user):]
-            test_fold.extend(fold)
-        np.save('folds/{}{}fold{}.npy'.format(
-            '{}weak'.format(round(100 * weakness)) if weakness > 0 else '', nb_samples, i), test_fold)
+            valid_fold.extend(fold[round(VALID * n_samples_user):round(TEST * n_samples_user)])
+            test_fold.extend(fold[round(TEST * n_samples_user):])
+        np.save('folds/{}weak{}valid{}.npy'.format(round(100 * VALID), nb_samples, i), valid_fold)
+        np.save('folds/{}weak{}fold{}.npy'.format(round(100 * TEST), nb_samples, i), test_fold)
     assert sorted(everything) == list(range(nb_samples))
 
 

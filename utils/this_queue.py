@@ -4,10 +4,10 @@ class OurQueue:
     Complexity:
         All operators in amortized O(W) time where W is the number of windows.
     """
-    def __init__(self):
+    def __init__(self, only_forever=False):
         self.now = None
         self.queue = []
-        self.window_lengths = [3600 * 24 * 30, 3600 * 24 * 7, 3600 * 24, 3600]
+        self.window_lengths = [] if only_forever else [3600 * 24 * 30, 3600 * 24 * 7, 3600 * 24, 3600]
         self.cursors = [0] * len(self.window_lengths)
 
     def __len__(self):
