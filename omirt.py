@@ -18,20 +18,27 @@ import json
 import random
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from bijection import sample_pairs
+#from scipy.special import softmax
 
 
 SENSITIVE_ATTR = 'school_id'  # Should be defined according to the dataset
-THIS_GROUP = 4
+THIS_GROUP = 25
 all_pairs = np.array(list(combinations(range(100), 2)))
 EPS = 1e-15
 
 
 def log_loss(y, pred):
     this_pred = np.clip(pred, EPS, 1 - EPS)
-    return -(y * np.log(this_pred) + (1 - y) * np.log(1 - this_pred)).sum()
+    return -(y * np.log(this_pred) + (1 - y) * np.log(1 - this_pred))
+
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
+
+
+def softmax(x):
+    return np.exp(x) / np.exp(x).sum()
 
 
 class OMIRT:
@@ -59,6 +66,12 @@ class OMIRT:
         self.fair = fair
         self.metrics = defaultdict(list)
         self.prepare_sets()
+        attr_ids = self.X_train[:, 2]
+        n_attr = len(np.unique(attr_ids))
+        self.n_samples = len(i_['train'])
+        self.W_attr = np.zeros((n_attr, self.n_samples))
+        self.W_attr[attr_ids, range(self.n_samples)] = 1
+        self.W_attr /= self.W_attr.sum(axis=1)[:, None]  # Normalize
 
     def prepare_sets(self):
         for key in self.i_:
@@ -79,24 +92,37 @@ class OMIRT:
         print('w user', self.w.shape)
         print('w item', self.item_bias.shape)
 
-    def full_fit(self, X, y):
+    def compute_metrics(self, step):
+        self.metrics['step'].append(step)
+
+        for group in {'', '_1', '_0'}:
+            for dataset in {'train', 'valid', 'test'}:
+                pred = self.predict(getattr(self, 'X_' + dataset + group))
+                auc = roc_auc_score(getattr(self, 'y_' + dataset + group), pred)
+                key = 'auc' + group + ' ' + dataset
+                self.metrics[key].append(auc)
+                print(key, auc)
+
+    def full_fit(self, training):
         # pywFM and libFM
-        print('full fit', X.shape, y.shape)
+        # print('full fit', X.shape, y.shape)
+        self.training = training
         
-        for _ in range(500):
-            if _ % 100 == 0:
-                pred = self.predict(X)
-                print('loss', ll(y, pred))
-                print(self.loss(X, y, self.mu, self.w, self.V, self.item_bias, self.item_embed) / len(y), self.w.sum(), self.item_bias.sum())
+        for step in tqdm(range(self.n_iter)):
+            if step % 50 == 0:
+                self.compute_metrics(step)
+                pred = self.predict(self.X_train)
+                print('loss', ll(self.y_train, pred))
+                print(self.loss(self.mu, self.w, self.V, self.item_bias, self.item_embed) / len(y), self.w.sum(), self.item_bias.sum())
             # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
-            gradient = grad(lambda w: self.loss(X, y, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
+            gradient = grad(lambda w: self.loss(self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
             # print('grad', gradient.shape)
             self.w -= self.GAMMA * gradient
-            self.item_bias -= self.GAMMA * grad(lambda item_bias: self.loss(X, y, self.mu, self.w, self.V, item_bias, self.item_embed))(self.item_bias)
+            self.item_bias -= self.GAMMA * grad(lambda item_bias: self.loss(self.mu, self.w, self.V, item_bias, self.item_embed))(self.item_bias)
             
             if self.GAMMA_V:
-                self.V -= self.GAMMA_V * grad(lambda V: self.loss(X, y, self.mu, self.w, V, self.item_bias, self.item_embed))(self.V)
-                self.item_embed -= self.GAMMA_V * grad(lambda item_embed: self.loss(X, y, self.mu, self.w, self.V, self.item_bias, item_embed))(self.item_embed)
+                self.V -= self.GAMMA_V * grad(lambda V: self.loss(self.mu, self.w, V, self.item_bias, self.item_embed))(self.V)
+                self.item_embed -= self.GAMMA_V * grad(lambda item_embed: self.loss(self.mu, self.w, self.V, self.item_bias, item_embed))(self.item_embed)
                 
             # print(self.predict(X))
 
@@ -107,24 +133,19 @@ class OMIRT:
         c = 0
         for step in tqdm(range(self.n_iter)):
             if step % 1000 == 0:
-                self.metrics['step'].append(step)
-
-                for group in {'', '_1', '_0'}:
-                    for dataset in {'train', 'valid', 'test'}:
-                        pred = self.predict(getattr(self, 'X_' + dataset + group))
-                        auc = roc_auc_score(getattr(self, 'y_' + dataset + group), pred)
-                        key = 'auc' + group + ' ' + dataset
-                        self.metrics[key].append(auc)
-                        print(key, auc)
+                self.compute_metrics(step)
                 
-                # print('auc_0', roc_auc_score(y[self.unprotected], pred[self.unprotected]))
-                print(c)
+                auc_1 = self.relaxed_auc(self.X_train_1, self.y_train_1, self.mu, self.w, self.V, self.item_bias, self.item_embed)
+                auc_0 = self.relaxed_auc(self.X_train_0, self.y_train_0, self.mu, self.w, self.V, self.item_bias, self.item_embed)
+                        
+                print('diff', auc_1, auc_0, auc_1 - auc_0)
 
             if step > 0 and step % 50 == 0:
-                auc_1 = self.relaxed_auc(self.X_valid_1, self.y_valid_1, self.mu, self.w, self.V, self.item_bias, self.item_embed)
-                auc_0 = self.relaxed_auc(self.X_valid_0, self.y_valid_0, self.mu, self.w, self.V, self.item_bias, self.item_embed)
+                auc_1 = self.relaxed_auc(self.X_valid_1, self.y_valid_1, self.mu, self.w, self.V, self.item_bias, self.item_embed, 1e4)
+                auc_0 = self.relaxed_auc(self.X_valid_0, self.y_valid_0, self.mu, self.w, self.V, self.item_bias, self.item_embed, 1e4)
                 c += np.sign(auc_1 - auc_0) * 0.01
                 c = np.clip(c, -1, 1)
+
             # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
             gradient = grad(lambda w: self.auc_loss(c, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
             # print('grad', gradient.shape, gradient)
@@ -190,29 +211,45 @@ class OMIRT:
 
     def loss(self, mu, w, V, bias, embed):
         pred = self.predict(self.X_train, mu, w, V, bias, embed)
-        return log_loss(self.y_train, pred) + self.LAMBDA * (
+        ll = log_loss(self.y_train, pred)
+        reg = self.LAMBDA * (
             mu ** 2 + np.sum(w ** 2) +
             np.sum(bias ** 2) + np.sum(embed ** 2) +
             np.sum(V ** 2))
+        if self.training == 'll':
+            return ll.sum() + reg
+        ll_per_group = self.W_attr @ ll
+        if self.training == 'mean':
+            return self.n_samples * ll_per_group.mean() + reg
+        if self.training == 'min':
+            return self.n_samples * np.dot(softmax(-ll_per_group), ll_per_group) + reg
 
     def auc_loss(self, c, mu, w, V, bias, embed):
         auc = self.relaxed_auc(self.X_train, self.y_train, mu, w, V, bias, embed)
         auc_1 = self.relaxed_auc(self.X_train_1, self.y_train_1, mu, w, V, bias, embed)
         auc_0 = self.relaxed_auc(self.X_train_0, self.y_train_0, mu, w, V, bias, embed)
         # return -auc_1  # Only optimize AUC of subgroup
-        return c * (auc_1 - auc_0)
+        # return c * (auc_1 - auc_0)  # Only minimize delta AUC
+        # return (auc_1 - auc_0) ** 2
+        # return - auc - auc_1 + self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
         return 100 - auc - self.fair * c * (auc_1 - auc_0) + self.LAMBDA * (mu ** 2 + np.sum(w ** 2) + np.sum(V ** 2) + np.sum(bias ** 2) + np.sum(embed ** 2))
 
-    def relaxed_auc(self, X, y, mu, w, V, bias, embed):
+    def relaxed_auc(self, X, y, mu, w, V, bias, embed, B=100):
         assert len(y) > 100
-        batch = np.random.choice(len(y), 100)
-        y_batch = y[batch]
-        pred = self.predict_logits(X[batch], mu, w, V, bias, embed)
+        if B == 100:
+            batch = np.random.choice(len(y), 100)
+            X_batch = X[batch]
+            y_batch = y[batch]
+        else:
+            X_batch = X
+            y_batch = y
+        pred = self.predict_logits(X_batch, mu, w, V, bias, embed)
         auc = 0
         n = len(y)
-        metabatch = np.random.choice(len(all_pairs), 100)
+        ii, jj = sample_pairs(len(y_batch), B)  # More efficient for bigger B
+        """metabatch = np.random.choice(len(all_pairs), 100)
         ii = all_pairs[metabatch][:, 0]
-        jj = all_pairs[metabatch][:, 1]
+        jj = all_pairs[metabatch][:, 1]"""
         auc = sigmoid((pred[ii] - pred[jj]) * (y_batch[ii] - y_batch[jj])).sum()
         return auc
 
@@ -242,7 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('--lr2', type=float, nargs='?', default=0.)
     parser.add_argument('--reg', type=float, nargs='?', default=0.)
     parser.add_argument('--small', type=bool, nargs='?', const=True, default=False)
-    parser.add_argument('--auc', type=bool, nargs='?', const=True, default=False)
+    parser.add_argument('--training', type=str, nargs='?', default='ll')
     parser.add_argument('--fair', type=bool, nargs='?', const=True, default=False)
     parser.add_argument('--online', type=bool, nargs='?', const=True, default=False)
     options = parser.parse_args()
@@ -273,7 +310,8 @@ if __name__ == '__main__':
 
     df = pd.read_csv(X_file)
     # Definition of protected subgroup
-    df['attribute'] = (df[SENSITIVE_ATTR] == THIS_GROUP).astype(int)
+    # df['attribute'] = (df[SENSITIVE_ATTR] == THIS_GROUP).astype(int)
+    df['attribute'] = (df[SENSITIVE_ATTR] % 2 == 0).astype(int)
     # Or attribute % 2 == 0
     print(df.head())
     print(df['attribute'].value_counts())
@@ -318,10 +356,10 @@ if __name__ == '__main__':
                     lambda_=options.reg, gamma=options.lr, gamma_v=options.lr2,
                     n_iter=options.iter, fair=options.fair)
 
-        if options.auc:
+        if options.training == 'auc':
             ofm.full_relaxed_fit()
         else:
-            ofm.full_fit()
+            ofm.full_fit(options.training)
 
         # ofm.load(folder)
         y_pred = ofm.predict(ofm.X_train)

@@ -12,7 +12,7 @@ import sys
 
 
 SENSITIVE_ATTR = "school_id"
-THIS_GROUP = 4  # 42: AUC=0.8
+THIS_GROUP = 25
 
 
 def avgstd(l):
@@ -55,10 +55,10 @@ def all_metrics(results, test):
         predictions_per_user[user]['y'].append(true)
 
     attribute = np.array(test[SENSITIVE_ATTR])
-    # protected = np.argwhere(attribute % 2 == 0).reshape(-1)
-    # unprotected = np.argwhere(attribute % 2 == 1).reshape(-1)
-    protected = np.argwhere(attribute == THIS_GROUP).reshape(-1)
-    unprotected = np.argwhere(attribute != THIS_GROUP).reshape(-1)
+    protected = np.argwhere(attribute % 2 == 0).reshape(-1)
+    unprotected = np.argwhere(attribute % 2 == 1).reshape(-1)
+    # protected = np.argwhere(attribute == THIS_GROUP).reshape(-1)
+    # unprotected = np.argwhere(attribute != THIS_GROUP).reshape(-1)
     print(type(y))
     print(len(y), len(y[protected]), len(y[unprotected]))
 
@@ -143,7 +143,7 @@ def all_metrics(results, test):
         nb.append(-yi)
         val += 1
     plt.stem(x, nb, use_line_collection=True)
-    plt.show()
+    # plt.show()
 
     # Display ids of the subgroups (sensitive attribute) that have the lowest/highest AUC
     print("Lowest AUC = {} on subgroup {}".format(np.around(np.min(metrics_per_sensitive_attr['auc']),5),
