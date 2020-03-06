@@ -1,6 +1,6 @@
 import glob
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score, ndcg_score, log_loss
+from sklearn.metrics import roc_auc_score, ndcg_score, log_loss, roc_curve
 from collections import Counter, defaultdict
 from scipy.stats import sem, t
 import pandas as pd
@@ -36,6 +36,7 @@ def all_metrics(results, test):
     predictions_per_sensitive_attr = defaultdict(lambda: defaultdict(list))
     metrics_per_user = defaultdict(list)
     metrics_per_sensitive_attr = defaultdict(list)
+    #roc_curves_per_sensitive_attr = defaultdict(lambda: defaultdict(list))
 
     model = 'LR' if results['model'] == 'LR' else 'FM' + str(len(str(results['model'])))
     print(model)
@@ -96,6 +97,7 @@ def all_metrics(results, test):
             attr_ids.append(attr)
             nb_samples.append(len(this_true))
             metrics_per_sensitive_attr['auc'].append(roc_auc_score(this_true, this_pred))
+            #roc_curves_per_sensitive_attr[attr]["fpr"], roc_curves_per_sensitive_attr[attr]["tpr"], _ = roc_curve(this_true, this_pred)
 
     print('Test length', len(y))
     print(y[:10], test[:10])
@@ -143,7 +145,7 @@ def all_metrics(results, test):
         nb.append(-yi)
         val += 1
     plt.stem(x, nb, use_line_collection=True)
-    # plt.show()
+    plt.show()
 
     # Display ids of the subgroups (sensitive attribute) that have the lowest/highest AUC
     print("Lowest AUC = {} on subgroup {}".format(np.around(np.min(metrics_per_sensitive_attr['auc']),5),
@@ -156,10 +158,19 @@ def all_metrics(results, test):
     # print(np.array(predictions_per_sensitive_attr[attr_ids[np.argmax(metrics_per_sensitive_attr['auc'])]]['pred'])[:10])
 
     print('AUC of that group', roc_auc_score(y[protected], y_pred[protected]))
+    fpr_protec, tpr_protec, _ = roc_curve(y[protected], y_pred[protected])
     # print('NDCG of that group', ndcg_score([y[protected]], [y_pred[protected]]))
     print('AUC of other group', roc_auc_score(y[unprotected], y_pred[unprotected]))
     # print('NDCG of other group', ndcg_score([y[unprotected]], [y_pred[unprotected]]))
-
+    fpr_unprotec, tpr_unprotec, _ = roc_curve(y[unprotected], y_pred[unprotected])
+    # Plot ROC curves of proteced vs. unprotected groups
+    plt.plot(fpr_protec, tpr_protec, label="Protected group")
+    plt.plot(fpr_unprotec, tpr_unprotec, label="Unprotected group")
+    plt.xlabel("False positive rate")
+    plt.ylabel("True positive rate")
+    plt.title("ROC curves comparison between protected and unprotected groups")
+    plt.legend()
+    plt.show()
     
 if __name__ == '__main__':
     os.chdir('data/assist09')
@@ -171,7 +182,7 @@ if __name__ == '__main__':
     # indices = np.load('folds/weak926646fold0.npy')
     # indices = np.load('folds/1199731fold0.npy')
     # indices = np.load('folds/50weak341791fold0.npy')
-    indices = np.load('folds/50weak278344fold0.npy')
+    indices = np.load('folds/50weak341791fold0.npy')
     print(len(indices))
 
     df = pd.read_csv('needed.csv')
