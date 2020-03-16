@@ -17,7 +17,12 @@ parser.add_argument('--skills', type=bool, nargs='?', const=True,
 parser.add_argument('--wins', type=bool, nargs='?', const=True, default=False)
 parser.add_argument('--fails', type=bool, nargs='?', const=True, default=False)
 parser.add_argument('--tutor', type=bool, nargs='?', const=True, default=False)
-parser.add_argument('--answer', type=bool, nargs='?', const=True, default=False)
+parser.add_argument(
+    '--answer',
+    type=bool,
+    nargs='?',
+    const=True,
+    default=False)
 options = parser.parse_args()
 
 os.chdir(os.path.join('data', options.dataset))  # Move to dataset folder
@@ -68,4 +73,5 @@ if options.dataset == 'dummy':
 
 save_npz('X-{:s}.npz'.format(features_suffix), X)
 np.save('y-{:s}.npy'.format(features_suffix), y)
-print('Successfully created X-{:s}.npz and y-{:s}.npy in data/{} folder'.format(features_suffix, features_suffix, options.dataset))
+print('Successfully created X-{:s}.npz and y-{:s}.npy in data/{} folder'.format(
+    features_suffix, features_suffix, options.dataset))

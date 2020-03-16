@@ -38,7 +38,7 @@ y_trains = {}
 X_tests = {}
 y_tests = {}
 FOLD = 'strong'
-folds = glob.glob(os.path.join(folder, 'folds/50weak{}fold*.npy'.format(nb_samples)))
+folds = glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples)))
 
 if folds:
     for i, filename in enumerate(folds):
@@ -49,6 +49,8 @@ if folds:
         y_trains[i] = y[i_train]
         X_tests[i] = X[i_test]
         y_tests[i] = y[i_test]
+else:
+    print('No folds found')
 
 
 if X_trains:

@@ -17,9 +17,10 @@ import sys
 import yaml
 
 
-SENSITIVE_ATTR = "school_id"
+# SENSITIVE_ATTR = "school_id"
+SENSITIVE_ATTR = "timestamp"
 
-df = pd.read_csv("data/assist09/needed.csv")
+df = pd.read_csv("data/openlab-train/needed.csv")  # Should fix this
 # df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('nunique')
 # df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('count')
 # df["weight"] = 1000 * (df[SENSITIVE_ATTR] % 2 == 1) + 1
@@ -27,7 +28,7 @@ df["weight"] = 1
 df["weight"] = 1 / df["weight"]
 # sys.exit(0)
 
-FULL = False
+FULL = True
 X_file = sys.argv[1] #options.X_file
 folder = os.path.dirname(X_file)
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
@@ -52,8 +53,8 @@ y_trains = {}
 X_tests = {}
 y_tests = {}
 FOLD = '50weak'
-folds = glob.glob(os.path.join(folder, 'folds/50weak{}fold*.npy'.format(nb_samples)))
-if folds:
+folds = glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples)))
+if folds and not FULL:
     print(folds)
     for i, filename in enumerate(folds):
         i_test = np.load(filename)
@@ -64,12 +65,14 @@ if folds:
         X_tests[i] = X[i_test]
         y_tests[i] = y[i_test]
         sample_weights[i] = np.array(df["weight"])[i_train]
+        print('Weights', i)
         #weights_test[i] = np.array(df["weight"])[i_test]
 elif FULL:
     X_trains[0] = X
     X_tests[0] = X
     y_trains[0] = y
     y_tests[0] = y
+    sample_weights[0] = np.array(df["weight"])
 else:
     print('No folds so train test split')
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
@@ -92,7 +95,7 @@ for i in X_trains:
 
     nb_samples = len(y_train)
     # nb_users = config['nb_users']
-    nb_groups = df['school_id'].nunique()
+    nb_groups = df[SENSITIVE_ATTR].nunique()
     
     """
     X_train_users = X_train[:, :config['nb_users']]

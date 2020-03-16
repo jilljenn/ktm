@@ -556,7 +556,7 @@ if __name__ == '__main__':
     y = np.array(df['correct'])
     nb_samples = len(y)
     
-    # Are folds fixed already?    
+    # Are folds fixed already?
     folds = sorted(glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples))))
     valids = sorted(glob.glob(os.path.join(folder, 'folds/36weak{}valid*.npy'.format(nb_samples))))
     if not folds:
