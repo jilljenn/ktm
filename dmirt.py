@@ -2,17 +2,38 @@ import keras
 from keras import regularizers
 from keras import backend as K
 from keras.models import Sequential, Model
-from keras.layers import Dense, Embedding, Flatten, Add, Activation, Dot, Input, dot, add, concatenate, Lambda, multiply
+from keras.layers import Dense, Embedding, Flatten, Add, Activation, Dot, Input, dot, add, concatenate, Lambda, multiply, AveragePooling1D
 from keras.utils import plot_model
+from keras.constraints import NonNeg
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 import pandas as pd
 import numpy as np
+import os.path
 import tensorflow as tf
 import argparse
 import glob
 import os
 import sys
+from tensorboard.plugins import projector
+
+def register_embedding(embedding_tensor_name, meta_data_fname, log_dir):
+    config = projector.ProjectorConfig()
+    embedding = config.embeddings.add()
+    embedding.tensor_name = embedding_tensor_name
+    embedding.metadata_path = meta_data_fname
+    projector.visualize_embeddings(log_dir, config)
+
+def save_labels_tsv(labels, filepath, log_dir):
+    with open(os.path.join(log_dir, filepath), 'w') as f:
+        for label in labels:
+            f.write('{}\n'.format(label))
+
+LOG_DIR = 'tmp'  # Tensorboard log dir
+META_DATA_FNAME = 'meta.tsv'  # Labels will be stored here
+EMBEDDINGS_TENSOR_NAME = 'embeddings2'
+EMBEDDINGS_FPATH = os.path.join(LOG_DIR, EMBEDDINGS_TENSOR_NAME + '.ckpt')
+STEP = 0
 
 
 '''
@@ -56,7 +77,7 @@ def auroc(y_true, y_pred):
     return tf.py_function(roc_auc_score, (y_true, y_pred), tf.double)
 
 def make_ones(x):
-    return K.reshape(K.ones_like(x), (-1, 1))
+    return K.reshape(K.ones_like(x), (-1, 1, 1))
 
 
 for i, (filename, valid) in enumerate(zip(folds, valids)):
@@ -77,19 +98,32 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
     items = Input(shape=(1,))
     # ones = Input(tensor=tf.reshape(tf.ones_like(users), (-1, 1)))
     ones = Lambda(make_ones)(users)
-    print(ones)
+    print('ones', ones)
 
-    # user_bias = Embedding(n_users, 1)(users)
-    # item_bias = Embedding(n_items, 1)(items)
-    user_embed = Flatten()(Embedding(n_users, 1 + n_dim)(users))
-    user_embed = concatenate([ones, user_embed])
-    item_embed = Flatten()(Embedding(n_items, 1 + n_dim)(items))
-    item_embed = concatenate([item_embed, ones])
+    user_bias = Embedding(n_users, 1,
+                          embeddings_regularizer=regularizers.l2(0.1 / nb_samples))(users)
+    item_bias = Embedding(n_items, 1,
+                          embeddings_regularizer=regularizers.l2(0.1 / nb_samples),
+                          name='acquix')(items)
+    
+    user_embed = Embedding(n_users, n_dim,
+                           embeddings_regularizer=regularizers.l2(0.1 / nb_samples))(users)
+    # user_embed = concatenate([ones, user_embed])
+    # print(user_embed)
+    item_embed = Embedding(n_items, n_dim,
+                           embeddings_constraint=NonNeg(),
+                           embeddings_regularizer=regularizers.l2(0.1 / nb_samples))(items)
+    # item_embed = concatenate([item_embed, ones])
     product = multiply([user_embed, item_embed])
+    pairwise = Flatten()(AveragePooling1D(n_dim, data_format='channels_first')(product))
+    # sys.exit(0)
 
-    features = concatenate([user_embed, item_embed, product])
-    hidden = Dense(2 * n_dim, activation='relu')(features)
-    logit = Dense(1)(hidden)
+    # features = concatenate([user_embed, item_embed, product])
+    # hidden = product
+    # hidden = Dense(2 * n_dim, activation='relu')(features)
+    # logit = Dense(1, use_bias=False)(hidden)
+    # logit = 
+    logit = Flatten()(add([item_bias, pairwise]))
     
     # logit = dot([user_embed, item_embed], axes=-1)
     # logit = add([user_bias, item_bias, pairwise])
@@ -100,6 +134,7 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
     model = Model([users, items], outputs=pred)
 
     print(model.summary())
+    # sys.exit(0)
 
     plot_model(model, to_file='model.png')
 
@@ -109,10 +144,25 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
     model.compile(
         loss=keras.losses.binary_crossentropy,
         # optimizer=keras.optimizers.SGD(lr=0.1, momentum=0.9, nesterov=True),
-        optimizer=keras.optimizers.Adam(lr=0.001),
+        optimizer=keras.optimizers.Adam(lr=0.01),
         metrics=['accuracy', auroc])
 
-    es = keras.callbacks.EarlyStopping(patience=3)
+    print(model)
+    for layer in model.layers:
+        print(layer.name, [c.shape for c in layer.get_weights()])
+    # sys.exit(0)
+
+    log_dir = 'tmp'
+    '''with open(os.path.join(log_dir, 'metadata.tsv'), 'w') as f:
+        np.savetxt(f, y_train[:100])'''
+    
+    es = keras.callbacks.EarlyStopping(patience=1)
+    '''tb = keras.callbacks.TensorBoard(log_dir=log_dir,
+                                     batch_size=1000,
+                                     embeddings_freq=1,
+                                     embeddings_layer_names=['acquix'],
+                                     embeddings_metadata='metadata.tsv',
+                                     embeddings_data=X_train[:100])'''
 
     print(X[list(i_train)][:5])
     print(X_train[0].shape, X_train[0][:5])
@@ -121,6 +171,15 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
 
     model.fit(X_train, y_train,
               validation_data=(X_valid, y_valid),
-              epochs=150, batch_size=10000, callbacks=[es])
+              epochs=1, batch_size=1000, callbacks=[es])
 
     print(model.evaluate(X_test, y_test))
+
+    register_embedding(EMBEDDINGS_TENSOR_NAME, META_DATA_FNAME, LOG_DIR)
+    weights = model.layers[2].get_weights()[0]
+    print(weights.shape)
+    save_labels_tsv(np.ones(len(weights)), META_DATA_FNAME, LOG_DIR)
+    embeddings = tf.Variable(weights, name=EMBEDDINGS_TENSOR_NAME)
+    
+    saver = tf.compat.v1.train.Saver([embeddings])  # Must pass list or dict
+    saver.save(sess=None, global_step=STEP, save_path=EMBEDDINGS_FPATH)
