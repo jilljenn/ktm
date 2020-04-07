@@ -1,3 +1,19 @@
+"""
+Prepare the Assistments 2009 dataset.
+Requires the collapsed version: skill_builder_data_corrected_collapsed.csv
+Download it on: https://sites.google.com/site/assistmentsdata/home/assistment-2009-2010-data/skill-builder-data-2009-2010 (the last link)
+
+Actually thanks to the ASSISTments team, we had access to another file,
+timestamp_data.csv, that contains the timestamps.
+This extra file does not seem openly available yet.
+It was useful for conducting DAS3H experiments, but you can ignore it
+if you are running KTM that do not consider time windows.
+
+Link to KTM paper: https://arxiv.org/abs/1811.03388
+Link to DAS3H paper: https://arxiv.org/abs/1905.06873
+
+Authors: Benoît Choffin, Jill-Jênn Vie, 2020.
+"""
 import numpy as np
 import pandas as pd
 from scipy import sparse

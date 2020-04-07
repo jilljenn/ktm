@@ -10,6 +10,8 @@ TEST = 0.6    # Test is 40%, so from 60%
 
 
 def save_folds(full, nb_folds=5):
+    if 'timestamp' not in full.columns:
+        full['timestamp'] = np.zeros(len(full))
     nb_samples = len(full)
     all_users = full['user_id'].unique()
     random.shuffle(all_users)

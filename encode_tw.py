@@ -21,7 +21,7 @@ options = parser.parse_args()
 dt = time.time()
 os.chdir('data/{}'.format(options.dataset))
 full = pd.read_csv('needed.csv')  # Only 176.7 MB for ASSISTments 2012 (3 GB)
-#full = pd.read_csv('preprocessed_data.csv',sep="\t")
+# full = pd.read_csv('preprocessed_data.csv',sep="\t")
 if 'skill_id' in full.columns:
     full['skill_id'] = full['skill_id'].astype(pd.Int64Dtype())  # Can be NaN
 
@@ -106,10 +106,14 @@ def add(r, c, d):
     data.append(d)
 
 
+def identity(x):
+    return x
+
+
 suffix = 'ui'
 if options.tw:
     suffix = 'das3h'
-    link_function = lambda x: x
+    link_function = identity
 elif options.pfa:
     suffix = 'swf'
     link_function = log
@@ -123,7 +127,8 @@ if options.tw or options.pfa:  # Build time windows features
         df['skill_ids'] = [None] * len(df)
 
     dt = time.time()
-    q = defaultdict(lambda: OurQueue(only_forever=options.pfa))  # Prepare counters for time windows
+    # Prepare counters for time windows
+    q = defaultdict(lambda: OurQueue(only_forever=options.pfa))
     # Using zip is the fastest way to iterate DataFrames
     # Source: https://stackoverflow.com/a/34311080
     for i_sample, user, item_id, t, correct, skill_ids in zip(

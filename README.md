@@ -11,7 +11,7 @@ Comments are always welcome!
       Booktitle = {Proceedings of the 33th {AAAI} Conference on Artificial Intelligence},
       Title = {{Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing}},
       Pages = {750--757},
-      Url = {http://arxiv.org/abs/1811.03388},
+      Url = {https://arxiv.org/abs/1811.03388},
       Year = 2019}
 
 Authors: [Jill-Jênn Vie](https://jilljenn.github.io), [Hisashi Kashima](https://hkashima.github.io/index_e.html)
