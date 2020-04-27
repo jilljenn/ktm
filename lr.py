@@ -28,23 +28,25 @@ df["weight"] = 1
 df["weight"] = 1 / df["weight"]
 # sys.exit(0)
 
-FULL = True
+FULL = False
 X_file = sys.argv[1] #options.X_file
 folder = os.path.dirname(X_file)
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
 
-X = load_npz(X_file)
+X = load_npz(X_file).tocsr()
 nb_samples, _ = X.shape
 y = np.load(y_file).astype(np.int32)
 print(X.shape, y.shape)
 
 # Know number of users
+'''
 with open(os.path.join(folder, 'config.yml')) as f:
     config = yaml.load(f)
     X_users = X[:, :config['nb_users']]
     print(X_users.shape)
     assert all(X_users.sum(axis=1) == 1)
     # sys.exit(0)
+'''
 
 # Are folds fixed already?
 X_trains = {}
@@ -53,7 +55,7 @@ y_trains = {}
 X_tests = {}
 y_tests = {}
 FOLD = '50weak'
-folds = glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples)))
+folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
 if folds and not FULL:
     print(folds)
     for i, filename in enumerate(folds):
@@ -64,7 +66,7 @@ if folds and not FULL:
         y_trains[i] = y[i_train]
         X_tests[i] = X[i_test]
         y_tests[i] = y[i_test]
-        sample_weights[i] = np.array(df["weight"])[i_train]
+        # sample_weights[i] = np.array(df["weight"])[i_train]
         print('Weights', i)
         #weights_test[i] = np.array(df["weight"])[i_test]
 elif FULL:
@@ -109,7 +111,7 @@ for i in X_trains:
     sample_weights = X_train_users @ (nb_samples / nb_users / nb_samples_per_user)
     """
     
-    model.fit(X_train, y_train, sample_weight=sample_weights[i])#nb_samples / nb_groups * sample_weights[i])
+    model.fit(X_train, y_train)#nb_samples / nb_groups * sample_weights[i])
 
     print('[time] Training', time.time() - dt, 's')
 

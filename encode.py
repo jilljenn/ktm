@@ -32,6 +32,7 @@ from collections import Counter
 import pandas as pd
 import numpy as np
 import argparse
+import logging
 import yaml
 import os
 import sys
@@ -45,35 +46,35 @@ parser.add_argument('--skills', type=bool, nargs='?', const=True,
                     default=False)
 parser.add_argument('--wins', type=bool, nargs='?', const=True, default=False)
 parser.add_argument('--fails', type=bool, nargs='?', const=True, default=False)
-parser.add_argument('--tutor', type=bool, nargs='?', const=True, default=False)
-parser.add_argument('--answer', type=bool, nargs='?', const=True,
-                    default=False)
+parser.add_argument('--extra', type=str, nargs='?', default='')
 options = parser.parse_args()
 
 os.chdir(os.path.join('data', options.dataset))  # Move to dataset folder
-all_features = ['users', 'items', 'skills', 'wins', 'fails', 'tutor', 'answer']
+all_features = ['users', 'items', 'skills', 'wins', 'fails']
 active_features = [features for features in all_features
                    if vars(options)[features]]
 features_suffix = ''.join([features[0] for features in active_features])
 
 
-def onehotize(col, depth):
+def onehotize(col):
+    depth = 1 + col.max()
     nb_events = len(col)
     rows = list(range(nb_events))
     return coo_matrix(([1] * nb_events, (rows, col)), shape=(nb_events, depth))
 
 
-def df_to_sparse(df, config, active_features):
+def df_to_sparse(df, active_features):
     '''
     Prepare sparse features
     '''
     X = {}
-    X['users'] = onehotize(df['user'], config['nb_users'])
-    X['items'] = onehotize(df['item'], config['nb_items'])
-    X['tutor'] = onehotize(df['tutor'], len(df['tutor'].unique()))
-    X['answer'] = onehotize(df['answer'], len(df['answer'].unique()))
+    X['users'] = onehotize(df['user'])
+    X['items'] = onehotize(df['item'])
+    if options.extra:
+        for column in options.extra.split(','):
+            X[column] = onehotize(df[column])
     if 'skill' in df:
-        X['skills'] = onehotize(df['skill'], config['nb_skills'])
+        X['skills'] = onehotize(df['skill'])
         X['wins'] = X['skills'].copy()
         X['wins'].data = df['wins']
         X['fails'] = X['skills'].copy()
@@ -88,10 +89,7 @@ def df_to_sparse(df, config, active_features):
 
 
 df = pd.read_csv('data.csv')
-with open('config.yml') as f:
-    config = yaml.safe_load(f)
-print('Configuration', config)
-X, y = df_to_sparse(df, config, active_features)
+X, y = df_to_sparse(df, active_features)
 print(df.head())
 if options.dataset == 'dummy':
     print(X.todense())
