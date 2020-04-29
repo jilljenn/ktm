@@ -28,7 +28,8 @@ from keras.layers import Dense, Embedding, Flatten, Add, Activation
 import tensorflow as tf
 
 
-SENSITIVE_ATTR = 'school_id'  # Should be defined according to the dataset
+# SENSITIVE_ATTR = 'school_id'  # Should be defined according to the dataset
+SENSITIVE_ATTR = 'timestamp'  # Should be defined according to the dataset
 THIS_GROUP = 25
 BATCH_SIZE = 1000
 EPS = 1e-15
@@ -39,9 +40,9 @@ def auroc(y_true, y_pred):
 
 
 def log_loss(y, pred):
-    # this_pred = np.clip(tf.squeeze(pred), EPS, 1 - EPS)
-    this_pred = tf.clip_by_value(tf.squeeze(pred), EPS, 1 - EPS)
-    print(y.shape, this_pred.shape)
+    this_pred = np.clip(pred, EPS, 1 - EPS)
+    # this_pred = tf.clip_by_value(tf.squeeze(pred), EPS, 1 - EPS)
+    # print(y.shape, this_pred.shape)
     return -(y * np.log(this_pred) + (1 - y) * np.log(1 - this_pred))
 
 def sigmoid(x):
@@ -53,6 +54,14 @@ def softmax(x):
 def relu(x):
     return x * (x > 0)
 
+def get_metrics(y_real, y_pred):
+    for how_many_last in [100, 20, 10]:
+        real = y_real[-how_many_last:]
+        pred = y_pred[-how_many_last:]
+        print('On last {} steps'.format(how_many_last))
+        print('test acc', np.mean(real == np.round(pred)))
+        print('test auc', roc_auc_score(real, pred))
+
 
 class OMIRT:
     def __init__(self, X, y, i_, n_users=10, n_items=5, d=3, lambda_=0., gamma=1., gamma_v=0., n_epoch=10, df=None, fair=False, training='ll'):
@@ -61,6 +70,8 @@ class OMIRT:
         self.i_ = i_
         self.n_users = n_users
         self.n_items = n_items
+        print(n_users, 'users', n_items, 'items')
+        # sys.exit(0)
         self.d = d
         self.GAMMA = gamma
         self.GAMMA_V = gamma_v
@@ -70,13 +81,13 @@ class OMIRT:
         # self.V = np.random.random((n_users + n_items, d))
         self.y_pred = []
         self.predictions = []
-        # self.item_bias = np.random.random(n_items)
+        self.item_bias = np.random.random(n_items)
         self.item_slopes = np.random.random(n_items)
-        # self.w = np.random.random(n_users)
-        # self.V = np.random.random((n_users, d))
-        self.V = np.random.random((10, 3))
-        self.w = np.random.random(3)
-        self.item_bias = np.random.random(3)
+        self.w = np.random.random(n_users)
+        self.V = np.random.random((n_users, d))
+        # self.V = np.random.random((10, 3))
+        # self.w = np.random.random(3)
+        # self.item_bias = np.random.random(3)
         self.item_embed = np.random.random((n_items, d))
         self.users = np.random.random((n_users, 5))
         self.items = np.random.random((n_items, 5))
@@ -100,8 +111,8 @@ class OMIRT:
         self.prepare_model()
 
     def prepare_model(self):
-        n_dim = 4
-        # n_dim = 1
+        # n_dim = 4
+        n_dim = 1
         '''
         self.model = Sequential([
             Embedding(self.n_users + self.n_items, n_dim, input_length=4),
@@ -112,9 +123,9 @@ class OMIRT:
         ])
         '''
         self.tf_model = tf.keras.Sequential([
-            tf.keras.layers.Embedding(self.n_users + self.n_items, n_dim, input_length=4),
+            tf.keras.layers.Embedding(self.n_users + self.n_items, n_dim, input_length=3),
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(units=4, activation='relu'),
+            # tf.keras.layers.Dense(units=4, activation='relu'),
             # Dense(units=2, activation='relu'),
             tf.keras.layers.Dense(units=1)#, activation='sigmoid')#, kernel_regularizer=regularizers.l2(0.001))
         ])
@@ -326,21 +337,23 @@ class OMIRT:
             
     def fit(self, X, y):
         # pywFM and libFM
+
+        self.X_train = X  # Careful
+        self.y_train = y
         
         for _ in range(1):
-            # print(self.loss(X, y, self.mu, self.w, self.V))
+            # print('loss', self.loss(self.mu, self.w, self.V, self.item_bias, self.item_embed, self.item_slopes))
             # self.mu -= self.GAMMA * grad(lambda mu: self.loss(X, y, mu, self.w, self.V))(self.mu)
-            gradient = grad(lambda w: self.loss(X, y, self.mu, w, self.V, self.item_bias, self.item_embed))(self.w)
+            gradient = grad(lambda w: self.loss(self.mu, w, self.V, self.item_bias, self.item_embed, self.item_slopes))(self.w)
             # print('grad', gradient.shape)
-            self.w -= 1 * gradient
+            self.w -= self.GAMMA * gradient
             self.GAMMA_V = 0.1 
             if self.GAMMA_V:
-                self.V -= self.GAMMA_V * grad(lambda V: self.loss(X, y, self.mu, self.w, V, self.item_bias, self.item_embed))(self.V)
+                self.V -= self.GAMMA_V * grad(lambda V: self.loss(self.mu, self.w, V, self.item_bias, self.item_embed, self.item_slopes))(self.V)
             # print(self.predict(X))
 
-    '''
     def predict_logits(self, X, mu=None, w=None, V=None, item_bias=None, item_embed=None, slopes=None):
-        return self.tf_model.predict(X)
+        # return self.tf_model.predict(X)
         if mu is None:
             mu = self.mu
             w = self.w
@@ -351,9 +364,10 @@ class OMIRT:
 
         users = X[:, 0]
         items = X[:, 1]
-        attempts = X[:, 3]
+        # attempts = X[:, 3]
 
-        # y_pred = mu + w[users] + item_bias[items] + attempts * slopes[items]
+        y_pred = mu + w[users] + item_bias[items]
+        # + attempts * slopes[items]
         # y_pred = np.concatenate((self.users[users], self.items[items]), axis=1)
         # print(y_pred.shape)
         # print(V.shape)
@@ -363,9 +377,7 @@ class OMIRT:
         """if self.d > 0:
             y_pred += np.sum(V[users] * item_embed[items], axis=1)"""
 
-        
-        
-        return y_pred'''
+        return y_pred
 
     def predict(self, X, mu=None, w=None, V=None, item_bias=None, item_embed=None, item_slopes=None):
         if mu is None:
@@ -376,23 +388,27 @@ class OMIRT:
             item_embed = self.item_embed
             item_slopes = self.item_slopes
         # return self.tf_model.predict(X)
-        return tf.sigmoid(tf.squeeze(self.tf_model.predict(X)))
+        # return tf.sigmoid(tf.squeeze(self.tf_model.predict(X)))
 
         y_pred = self.predict_logits(X, mu, w, V, item_bias, item_embed, item_slopes)
         return sigmoid(y_pred)
     
-    def update(self, X, y):
+    def update(self):
+        X = self.X_test  # [:, :2]
+        y = self.y_test
         s = len(X)
         self.y_pred = []
         for x, outcome in zip(X, y):
-            pred = self.predict(x.reshape(-1, 2))
+            pred = self.predict(x.reshape(-1, 3))
             # print('update', x, pred, outcome)
             self.y_pred.append(pred.item())
-            self.fit(x.reshape(-1, 2), outcome)
+            # self.y_pred.append(pred.numpy())  # pred.item()
+            self.fit(x.reshape(-1, 3), outcome)
             # print(self.w.sum(), self.item_embed.sum())
-        print(roc_auc_score(y, self.y_pred))
+        get_metrics(y, self.y_pred)
 
     def loss(self, mu, w, V, bias, embed, slopes, display=False):
+        # print('mode', self.training, mu, w.shape, V.shape, bias.shape, embed.shape, slopes.shape)
         if self.training == 'auc':
             pred_1 = self.predict(self.X_batch_1, mu, w, V, bias, embed, slopes)
             pred_0 = self.predict(self.X_batch_0, mu, w, V, bias, embed, slopes)
@@ -409,6 +425,7 @@ class OMIRT:
             np.sum(bias ** 2) + np.sum(embed ** 2) +
             np.sum(V ** 2))
         if self.training == 'll':
+            # print('wow', ll.sum(), reg, reg.shape)
             return ll.sum() + reg
         ll_per_group = self.W_attr @ ll
         if self.training == 'mean':
@@ -514,6 +531,7 @@ if __name__ == '__main__':
     parser.add_argument('--training', type=str, nargs='?', default='ll')
     parser.add_argument('--fair', type=bool, nargs='?', const=True, default=False)
     parser.add_argument('--online', type=bool, nargs='?', const=True, default=False)
+    parser.add_argument('--folds', type=str, nargs='?', default='')
     options = parser.parse_args()
     print(vars(options))
 
@@ -543,27 +561,36 @@ if __name__ == '__main__':
     df = pd.read_csv(X_file)
     # Definition of protected subgroup
     # df['attribute'] = (df[SENSITIVE_ATTR] == THIS_GROUP).astype(int)
-    df['attribute'] = (df[SENSITIVE_ATTR] % 2 == 0).astype(int)
+    df['attribute'] = np.random.randint(2, size=len(df))
+    # df['attribute'] = (df[SENSITIVE_ATTR] % 2 == 0).astype(int)
     # Or attribute % 2 == 0
     print(df.head())
     print(df['attribute'].value_counts())
     
-    X = np.array(df[['user_id', 'item_id', 'attribute', 'attempts']])
+    X = np.array(df[['user_id', 'item_id', 'attribute']])  # , 'attempts']])
     print(df['user_id'].min(), df['user_id'].max(), len(np.unique(df['user_id'])))
     print(df['item_id'].min(), df['item_id'].max())
-    X[:, 1] += df['user_id'].max() + 1
+    # X[:, 1] += df['user_id'].max() + 1
     # sys.exit(0)
     y = np.array(df['correct'])
     nb_samples = len(y)
     
     # Are folds fixed already?
-    folds = sorted(glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples))))
-    valids = sorted(glob.glob(os.path.join(folder, 'folds/36weak{}valid*.npy'.format(nb_samples))))
+    valids = None
+    if options.folds:
+        folds = [options.folds]
+    else:
+        folds = sorted(glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples))))
+        valids = sorted(glob.glob(os.path.join(folder, 'folds/36weak{}valid*.npy'.format(nb_samples))))
     if not folds:
         print('No folds')
         # For example:
         # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
         #                                                     shuffle=False)
+    if not valids:
+        print('No valids')
+        if folds:
+            valids = folds
 
     i_ = {}
     for i, (filename, valid) in enumerate(zip(folds, valids)):
@@ -597,22 +624,22 @@ if __name__ == '__main__':
                 i_[dataset + '_' + attr] = i_[dataset] & i_[attr]
 
         for key in i_:
-            print(key, type(list(i_[key])[0]))
+            # print(key, type(list(i_[key])[0]))
             i_[key] = list(i_[key])
 
         ofm = OMIRT(X, y, i_, config['nb_users'], config['nb_items'], options.d,
                     lambda_=options.reg, gamma=options.lr, gamma_v=options.lr2,
                     n_epoch=options.epoch, fair=options.fair, training=options.training)
 
-        if options.training == 'auc':
+        '''if options.training == 'auc':
             ofm.full_relaxed_fit()
         elif options.training == 'deep':
             # ofm.deep_fit()
             ofm.tf_fit()
         else:
-            ofm.full_fit()
+            ofm.full_fit()'''
 
-        # ofm.load(folder)
+        ofm.load(folder)
         y_pred = ofm.predict(ofm.X_train)
         print('train auc', roc_auc_score(ofm.y_train, y_pred))
 
@@ -623,17 +650,19 @@ if __name__ == '__main__':
         plt.legend()
 
         y_pred = ofm.predict(ofm.X_test)
-        ofm.y_pred = y_pred.numpy().tolist()  # Save for future use
+        # ofm.y_pred = y_pred.numpy().tolist()  # Save for future use
+        ofm.y_pred = y_pred.tolist()  # Save for future use
         print(ofm.X_test[:5])
         print(ofm.y_test[:5])
         print(ofm.y_pred[:5])
-        print('test auc', roc_auc_score(ofm.y_test, y_pred))
+        get_metrics(ofm.y_test, y_pred)
 
         test = df.iloc[i_['test']]
 
         plt.show()
         
         if options.online:
+            print('Online')
             ofm.update()
         if len(ofm.X_test) > 10000:
             ofm.save_results(vars(options), test)
