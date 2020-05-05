@@ -36,7 +36,7 @@ If you also want to get the factorization machines running (KTM for *d* > 0), yo
 
 ## Prepare data
 
-Select a <dataset> and the features you want to include.
+Select a dataset and the features you want to include.
 
 ### Case 1: There is only one skill per item.
 

@@ -6,6 +6,17 @@ import glob
 import os.path
 
 
+"""
+K-fold on users.
+First K - 1 folds are fully for train.
+On the K-th fold of test users, this represents for example 40% for test:
+
+0 %      36 %     60 %       100 %
+tr tr tr va va va te te te te
+-------- -------- -----------
+ TRAIN    VALID      TEST
+
+"""
 VALID = 0.36  # Valid is 40% of train (= 24%), so starts from 36%
 TEST = 0.6    # Test is 40%, so from 60%
 
