@@ -20,19 +20,45 @@ Authors: [Jill-Jênn Vie](https://jilljenn.github.io), [Hisashi Kashima](https:/
 
 Presented at the [Optimizing Human Learning](https://humanlearn.io) workshop in Kingston, Jamaica on June 4, 2019.
 
-Slides from the tutorial are available [here](doc/tuto.pdf). A notebook on Colab will be available soon.
+Slides from the tutorial are available [here](doc/tuto.pdf). A notebook on Colab will be available "soon", but the priority is to have tests in this repository.
 
-The tutorial makes you play with the models to assess **weak generalization**. To assess **strong generalization** and reproduce the experiments of the paper, you may want to borrow code from another repository: [jilljenn/TF-recomm](https://github.com/jilljenn/TF-recomm/blob/master/fm.py#L106).
+The tutorial makes you play with the models to assess **weak generalization**. To assess **strong generalization** and reproduce the experiments of the paper, you want to look at how folds are created in [dataio.py](https://github.com/jilljenn/ktm/blob/master/dataio.py#L12).
 
 ## Install
 
-    python3 -m venv venv   # Python 2 should work as well, but we suggest you to use virtualenv
+    python3 -m venv venv
     . venv/bin/activate
     pip install -r requirements.txt  # Will install numpy, scipy, pandas, scikit-learn, pywFM
 
 If you also want to get the factorization machines running (KTM for *d* > 0), you should also do:
 
     make libfm
+
+## Prepare data
+
+Select a <dataset> and the features you want to include.
+
+### Case 1: There is only one skill per item.
+
+`data/<dataset>/data.csv` should contain the following columns:
+
+    user, item, skill, correct, wins, fails
+
+where wins and fails are the number of successful and unsuccessful
+attempts at the corresponding skill.
+
+### Case 2: There may be several skills associated to an item.
+
+`data/<dataset>/needed.csv` needs to contain:
+
+    user_id, item_id, correct
+
+(Note the difference.)
+
+And `data/<dataset>/q_mat.npz` should be a q-matrix under `scipy.sparse` format.
+
+If you want to compute wins and fails like in PFA or DAS3H,
+you should run `encode_tw.py` instead of this file, with the `--pfa` option for PFA or `--tw` for DAS3H.
 
 ## Run
 
@@ -51,7 +77,7 @@ If you are lazy, you can also just do `make` and try to understand what is going
 
 Choffin et al. proposed the DAS3H model, and we implemented it using queues. This code is faster than the original KTM encoding.
 
-To prepare a dataset, see examples in the `data` folder.  
+To prepare a dataset like Assistments, see examples in the `data` folder.  
 Skill information should be available either as `skill_id`, or `skill_ids` separated with `~~`, or in a q-matrix `q_mat.npz`.
 
     python encode_tw.py --dataset dummy_tw --tw  # Will encode DAS3H sparse features into X.npz
@@ -60,7 +86,7 @@ Then you can run `lr.py` or `fm.py`, see below.
 
 ### Running a ML model
 
-Assume you encoded say PFA features:
+If you want to encode PFA features:
 
     python encode.py --skills --wins --fails  # Will create X-swf.npz
 
@@ -81,6 +107,14 @@ NEW! For an online MIRT model:
 
 	# Will train a IRT model on Fraction dataset with learning rate 0.01
 	python omirt.py --d 0 data/fraction/needed.csv --lr 0.01 --lr2 0.
+
+NEW! For an IRT or deeper model with Keras, for batching and early stopping:
+
+    python dmirt.py data/assist09/needed.csv
+
+It will also create a model.png file with the architecture (here just IRT with L2 regularization):
+
+![](model.png)
 
 ## Results
 

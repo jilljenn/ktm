@@ -6,6 +6,8 @@ from collections import defaultdict
 from scipy.sparse import load_npz
 from datetime import datetime
 from eval_metrics import avgstd
+from dataio import load_folds
+import argparse
 import numpy as np
 import pandas as pd
 import os.path
@@ -17,19 +19,25 @@ import sys
 import yaml
 
 
+parser = argparse.ArgumentParser(description='Run LR')
+parser.add_argument('X_file', type=str, nargs='?', default='dummy')
+parser.add_argument('--test', type=str, nargs='?', default='')
+options = parser.parse_args()
+
+
 # SENSITIVE_ATTR = "school_id"
 SENSITIVE_ATTR = "timestamp"
 
-df = pd.read_csv("data/openlab-train/needed.csv")  # Should fix this
+# df = pd.read_csv("data/openlab-train/needed.csv")  # Should fix this
 # df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('nunique')
 # df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('count')
 # df["weight"] = 1000 * (df[SENSITIVE_ATTR] % 2 == 1) + 1
-df["weight"] = 1
-df["weight"] = 1 / df["weight"]
+# df["weight"] = 1
+# df["weight"] = 1 / df["weight"]
 # sys.exit(0)
 
 FULL = False
-X_file = sys.argv[1] #options.X_file
+X_file = options.X_file
 folder = os.path.dirname(X_file)
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
 
@@ -55,10 +63,12 @@ y_trains = {}
 X_tests = {}
 y_tests = {}
 FOLD = '50weak'
-folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
-if folds and not FULL:
-    print(folds)
-    for i, filename in enumerate(folds):
+
+# folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
+test_folds, valid_folds = load_folds(options)
+if test_folds and not FULL:
+    print(test_folds)
+    for i, filename in enumerate(test_folds):
         i_test = np.load(filename)
         print('Fold', i, i_test.shape)
         i_train = list(set(range(nb_samples)) - set(i_test))
@@ -74,7 +84,7 @@ elif FULL:
     X_tests[0] = X
     y_trains[0] = y
     y_tests[0] = y
-    sample_weights[0] = np.array(df["weight"])
+    # sample_weights[0] = np.array(df["weight"])
 else:
     print('No folds so train test split')
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
@@ -97,7 +107,7 @@ for i in X_trains:
 
     nb_samples = len(y_train)
     # nb_users = config['nb_users']
-    nb_groups = df[SENSITIVE_ATTR].nunique()
+    # nb_groups = df[SENSITIVE_ATTR].nunique()
     
     """
     X_train_users = X_train[:, :config['nb_users']]
@@ -160,8 +170,8 @@ saved_results = {
 with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
     json.dump(saved_results, f)
 
-df = pd.read_csv(os.path.join(folder, 'needed.csv'))
-indices = np.load(folds[0])
-test = df.iloc[indices]
-    
-all_metrics(saved_results, test)
+# df = pd.read_csv(os.path.join(folder, 'needed.csv'))
+# indices = np.load(test_folds[0])
+# test = df.iloc[indices]
+
+# all_metrics(saved_results, test)

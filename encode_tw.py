@@ -110,13 +110,13 @@ def identity(x):
     return x
 
 
-suffix = 'ui'
+suffix = 'uis'
 if options.tw:
     suffix = 'das3h'
-    link_function = identity
+    link_function = lambda x: np.log(1 + x)
 elif options.pfa:
     suffix = 'swf'
-    link_function = log
+    link_function = identity
 
 if options.tw or options.pfa:  # Build time windows features
     df = full

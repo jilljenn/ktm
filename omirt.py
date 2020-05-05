@@ -19,6 +19,7 @@ import random
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from bijection import sample_pairs
+from dataio import load_folds
 """
 import keras
 from keras import regularizers
@@ -576,24 +577,10 @@ if __name__ == '__main__':
     nb_samples = len(y)
     
     # Are folds fixed already?
-    valids = None
-    if options.folds:
-        folds = [options.folds]
-    else:
-        folds = sorted(glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples))))
-        valids = sorted(glob.glob(os.path.join(folder, 'folds/36weak{}valid*.npy'.format(nb_samples))))
-    if not folds:
-        print('No folds')
-        # For example:
-        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
-        #                                                     shuffle=False)
-    if not valids:
-        print('No valids')
-        if folds:
-            valids = folds
+    test_folds, valid_folds = load_folds(options)
 
     i_ = {}
-    for i, (filename, valid) in enumerate(zip(folds, valids)):
+    for i, (filename, valid) in enumerate(zip(test_folds, valid_folds)):
         i_['test'] = set(np.load(filename))
         i_['valid'] = set(np.load(valid))
         i_['train'] = set(range(nb_samples)) - i_['test'] - i_['valid']

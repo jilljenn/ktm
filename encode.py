@@ -17,9 +17,6 @@ and data/<dataset>/q_mat.npz should be a q-matrix under scipy.sparse format.
 If you want to compute wins and fails like in PFA,
 you should run encode_tw.py instead of this file, with the --pfa option.
 
-If you want to add extra side information, you can be inspired by
---tutor or --answer below.
-
 Note: IDs for users and items need not be disjoint,
 as we use hstack below to concatenate sparse matrices.
 

@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score
 import pandas as pd
 import numpy as np
+from dataio import load_folds
 import os.path
 import tensorflow as tf
 import argparse
@@ -53,6 +54,8 @@ X_train, X_valid, y_train, y_valid = train_test_split(X_trainval, y_trainval,
 parser = argparse.ArgumentParser(description='Run DMIRT')
 parser.add_argument('X_file', type=str, nargs='?', default='dummy')
 parser.add_argument('--d', type=int, nargs='?', default=1)
+parser.add_argument('--test', type=str, nargs='?', default='',
+                    help='Path to numpy array containing indices of folds.')
 options = parser.parse_args()
 
 
@@ -69,18 +72,23 @@ n_items = df.item_id.nunique()
 X = np.array(df[['user_id', 'item_id']])
 y = np.array(df['correct'])
 nb_samples = len(y)
-folds = sorted(glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples))))
-valids = sorted(glob.glob(os.path.join(folder, 'folds/36weak{}valid*.npy'.format(nb_samples))))
+test_folds, valid_folds = load_folds(folder, options, df)
+print('test folds', test_folds)
 
 
 def auroc(y_true, y_pred):
+    '''
+    Needed this workaround for Keras to compute AUC,
+    But it computes it on batches so some batches do not have
+    enough diversity (not all 1 nor not all 0).
+    '''
     return tf.py_function(roc_auc_score, (y_true, y_pred), tf.double)
 
 def make_ones(x):
     return K.reshape(K.ones_like(x), (-1, 1, 1))
 
 
-for i, (filename, valid) in enumerate(zip(folds, valids)):
+for i, (filename, valid) in enumerate(zip(test_folds, valid_folds)):
     i_test = set(np.load(filename))
     i_valid = set(np.load(valid))
     i_train = set(range(nb_samples)) - i_test - i_valid
@@ -89,6 +97,7 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
         indices = list(globals()['i_' + dataset])
         print(X[indices, 0].shape)
         # sys.exit(0)
+        # For example, X_train is a list of the user_ids, and the item_ids
         globals()['X_' + dataset] = [X[indices, 0], X[indices, 1]]
         globals()['y_' + dataset] = y[indices]
 
@@ -114,8 +123,8 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
                            embeddings_constraint=NonNeg(),
                            embeddings_regularizer=regularizers.l2(0.1 / nb_samples))(items)
     # item_embed = concatenate([item_embed, ones])
-    product = multiply([user_embed, item_embed])
-    pairwise = Flatten()(AveragePooling1D(n_dim, data_format='channels_first')(product))
+    # product = multiply([user_embed, item_embed])
+    # pairwise = Flatten()(AveragePooling1D(n_dim, data_format='channels_first')(product))
     # sys.exit(0)
 
     # features = concatenate([user_embed, item_embed, product])
@@ -123,10 +132,10 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
     # hidden = Dense(2 * n_dim, activation='relu')(features)
     # logit = Dense(1, use_bias=False)(hidden)
     # logit = 
-    logit = Flatten()(add([item_bias, pairwise]))
+    # logit = Flatten()(add([item_bias, pairwise]))
     
     # logit = dot([user_embed, item_embed], axes=-1)
-    # logit = add([user_bias, item_bias, pairwise])
+    logit = Flatten()(add([user_bias, item_bias]))
     pred = Activation('sigmoid')(logit)
 
     # out = Dense(1, activation='sigmoid')(logit)
@@ -145,7 +154,7 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
         loss=keras.losses.binary_crossentropy,
         # optimizer=keras.optimizers.SGD(lr=0.1, momentum=0.9, nesterov=True),
         optimizer=keras.optimizers.Adam(lr=0.01),
-        metrics=['accuracy', auroc])
+        metrics=['accuracy'])
 
     print(model)
     for layer in model.layers:
@@ -171,9 +180,15 @@ for i, (filename, valid) in enumerate(zip(folds, valids)):
 
     model.fit(X_train, y_train,
               validation_data=(X_valid, y_valid),
-              epochs=1, batch_size=1000, callbacks=[es])
+              epochs=50, batch_size=1000, callbacks=[es])
 
+    print('But why', X_test[0].shape)
+    from collections import Counter
+    print(Counter(y_test.tolist()))
     print(model.evaluate(X_test, y_test))
+
+    y_pred = model.predict(X_test)
+    print('Test AUC', roc_auc_score(y_test, y_pred))
 
     register_embedding(EMBEDDINGS_TENSOR_NAME, META_DATA_FNAME, LOG_DIR)
     weights = model.layers[2].get_weights()[0]
