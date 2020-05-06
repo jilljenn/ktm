@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/jilljenn/ktm.svg?branch=master)](https://travis-ci.org/jilljenn/ktm)
+[![Codecov](https://img.shields.io/codecov/c/github/jilljenn/ktm.svg)](https://codecov.io/gh/jilljenn/ktm/)
+
 # Knowledge Tracing Machines
 
 - Presented at the AAAI 2019 conference in Honolulu, Hawaii on January 27, 2019.
