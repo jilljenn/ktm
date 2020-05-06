@@ -1,0 +1,4 @@
+codecov:
+  token: "74d5e4b3-4370-4a55-ab3f-0fbbf6253fd7"
+ignore:
+  - "tests/test_*.py"
