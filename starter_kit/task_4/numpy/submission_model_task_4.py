@@ -1,4 +1,4 @@
-from model import MyModel
+from irt import MyModel
 
 class Submission:
     """
@@ -30,7 +30,7 @@ class Submission:
             for each student (row) in the dataset.
         """
         # Use the loaded model to perform feature selection.
-        selections = self.model.select_feature(masked_data, can_query)
+        selections = self.model.select_feature(masked_data, masked_binary_data, can_query)
 
         return selections
 
@@ -49,7 +49,7 @@ class Submission:
             for each student (row) in the dataset.
         """
         # Update the model after new data has been revealed, if required.
-        pass
+        self.model.update_model(masked_data, masked_binary_data, can_query)
 
     def predict(self, masked_data, masked_binary_data):
         """
@@ -69,6 +69,3 @@ class Submission:
         predictions = self.model.predict(masked_data, masked_binary_data)
 
         return predictions
-
-
-

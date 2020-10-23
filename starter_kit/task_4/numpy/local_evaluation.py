@@ -6,6 +6,7 @@ import pandas as pd
 import os
 from pathlib import Path
 
+
 PATH = Path('../../../data/neurips')
 
 def pivot_df(df, values):
@@ -68,5 +69,11 @@ if __name__ == "__main__":
 
     pred_list = preds[np.where(targets==1)]
     target_list = binary_data[np.where(targets==1)]
+
+    user_ids, item_ids = np.where(targets == 1)
+    '''print(submission.model.results[0])
+    for i in range(20):
+        print(user_ids[i], item_ids[i], submission.model.diff[i], 'pred', pred_list[i], 'truth', target_list[i])'''
+
     acc = (pred_list == target_list).astype(int).sum()/len(target_list)
     print('Final accuracy: {}'.format(acc))
