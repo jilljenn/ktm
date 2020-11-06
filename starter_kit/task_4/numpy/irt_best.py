@@ -7,6 +7,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LogisticRegression
 from scipy.optimize import brentq
 from collections import Counter, defaultdict
+import sys
 
 
 PATH = Path('../../../data/neurips')
@@ -40,7 +41,7 @@ class MyModel:
         self.most_popular_answers = None
         self.num_answers = None
 
-    def train_model(self):
+    def train_model(self, extra_data=None):
         """
         Train a model.
         """
@@ -53,25 +54,39 @@ class MyModel:
 
         estimators = [
             ('onehot', OneHotEncoder()),
-            ('lr', LogisticRegression(solver='liblinear', C=1e10, fit_intercept=False))
+            ('lr', LogisticRegression(solver='liblinear'))#, fit_intercept=False))#, C=1e10)
         ]
         pipe = Pipeline(estimators)
         
         df = pd.read_csv(data_path)
+        offset = df['UserId'].max() + 1
+        if extra_data is not None:
+            nb_active_users = extra_data['UserId'].nunique()
+            extra_data['UserId'] += offset
+            df = pd.concat([df, extra_data])
         nb_items = df['QuestionId'].nunique()
         FIELDS = ['UserId', 'QuestionId']
         pipe.fit(df[FIELDS].fillna(0), df['IsCorrect'])
 
         weights = pipe.named_steps['lr'].coef_[0]
-        thetas = weights[:-nb_items]
-        difficulty = -weights[-nb_items:]
-        np.save('model_task_4_theta0.npy', thetas.mean())
-        np.save('model_task_4_difficulty.npy', difficulty)
+        self.bias = pipe.named_steps['lr'].intercept_[0]
+        #self.bias = 0
+        self.thetas = weights[:-nb_items]
+        self.diff = -weights[-nb_items:]
+        if extra_data is None:
+            np.save('model_task_4_bias.npy', self.bias)
+            np.save('model_task_4_theta0.npy', np.mean(self.thetas))
+            np.save('model_task_4_difficulty.npy', self.diff) # iculty)
+        else:
+            self.df = df
+            self.thetas = self.thetas[-nb_active_users:].reshape(-1, 1)  # Drop inactive
 
     def load(self, most_popular_path, num_answers_path):
         """
         Load a model's state.
         """
+        self.bias = np.load('model_task_4_bias.npy')
+        print('bias', self.bias)
         self.diff = np.load('model_task_4_difficulty.npy')
         self.theta0 = np.load('model_task_4_theta0.npy')
         
@@ -84,9 +99,9 @@ class MyModel:
         Select best feature from those available.
         """
         self.nb_students, self.nb_items = masked_data.shape
-        if self.thetas is None:  # First question
+        if self.thetas is None or not len(self.thetas):  # First question
             self.thetas = np.array([self.theta0] * self.nb_students).reshape(-1, 1)
-        loss = np.abs(0.5 - proba(self.thetas, self.diff)) + (1 - can_query)
+        loss = np.abs(0.5 - proba(self.thetas, self.diff, self.bias)) + (1 - can_query)
         selections = np.argmin(loss, axis=1)
         candidates = Counter()
         for k, v in candidates.most_common(1):
@@ -95,15 +110,21 @@ class MyModel:
 
     def update_model(self, masked_data, masked_binary_data, can_query):
         user_ids, item_ids = np.where(masked_data > 0)
-        self.results = defaultdict(list)
+        # correctness = masked_binary_data[user_ids, item_ids]
+        correctness = masked_binary_data[masked_data > 0]  # Identical ^
+
+        extra_data = pd.DataFrame(np.column_stack((user_ids, item_ids, correctness)), columns=['UserId', 'QuestionId', 'IsCorrect'])
+        self.train_model(extra_data)
+        
+        '''self.results = defaultdict(list)
         for user_id, item_id in zip(user_ids, item_ids):
             self.results[user_id].append((self.diff[item_id], masked_binary_data[user_id, item_id]))
         for user_id in range(self.nb_students):
-            self.thetas[user_id] = estimated_theta(self.results[user_id])
+            self.thetas[user_id] = estimated_theta(self.results[user_id])'''
 
     def predict(self, masked_data, masked_binary_data):
         """
         Produce binary predictions.
         """
-        predictions = np.round(proba(self.thetas, self.diff) - 0.05)
+        predictions = np.round(proba(self.thetas, self.diff, self.bias) - 0.0)
         return predictions

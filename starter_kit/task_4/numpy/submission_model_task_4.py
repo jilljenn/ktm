@@ -1,4 +1,8 @@
-from irt import MyModel
+"""
+Winning model by tenshow
+"""
+# from irt import MyModel
+from irt_best import MyModel
 
 class Submission:
     """

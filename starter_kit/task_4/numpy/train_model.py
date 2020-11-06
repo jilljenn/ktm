@@ -4,8 +4,8 @@ a dummy script to "train" a model and save the "trained model"
 '''
 
 import numpy as np
-#from model import MyModel
-from irt import MyModel
+#from irt import MyModel
+from irt_best import MyModel
 
 model = MyModel()
 model.train_model()
