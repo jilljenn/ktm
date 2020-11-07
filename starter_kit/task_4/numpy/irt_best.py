@@ -18,19 +18,6 @@ def sigmoid(x):
 def proba(th, d, bias=0):
     return sigmoid(th - d + bias)
 
-def deriv_likelihood(theta, results):
-    return sum(a - proba(theta, d) for d, a in results)
-
-def estimated_theta(results):
-    try:
-        return brentq(lambda theta: deriv_likelihood(theta, results), -2, 10)
-    except ValueError:
-        if all(outcome == 1 for _, outcome in results):
-            return 10
-        if all(outcome == 0 for _, outcome in results):
-            return -2
-        return 0
-
 
 class MyModel:
     def __init__(self):
@@ -45,6 +32,10 @@ class MyModel:
         """
         Train a model.
         """
+        if extra_data is not None:
+            timestep = len(extra_data) // 984
+        else:
+            timestep = 0
         # # For local evaluation
         data_path = PATH / 'test_input/train_task_4.csv'
 
@@ -54,9 +45,10 @@ class MyModel:
 
         estimators = [
             ('onehot', OneHotEncoder()),
-            ('lr', LogisticRegression(solver='liblinear'))#, fit_intercept=False))#, C=1e10)
+            ('lr', LogisticRegression(solver='liblinear', C=1e10 if timestep == 0 else 1))
         ]
         pipe = Pipeline(estimators)
+        self.pipe = pipe
         
         df = pd.read_csv(data_path)
         offset = df['UserId'].max() + 1
@@ -70,14 +62,12 @@ class MyModel:
 
         weights = pipe.named_steps['lr'].coef_[0]
         self.bias = pipe.named_steps['lr'].intercept_[0]
-        #self.bias = 0
+        self.bias = 0  # Forget the bias
         self.thetas = weights[:-nb_items]
-        self.diff = -weights[-nb_items:]
-        if extra_data is None:
-            np.save('model_task_4_bias.npy', self.bias)
-            np.save('model_task_4_theta0.npy', np.mean(self.thetas))
-            np.save('model_task_4_difficulty.npy', self.diff) # iculty)
-        else:
+        diff = -weights[-nb_items:]
+        self.diff = diff
+        
+        if extra_data is not None:
             self.df = df
             self.thetas = self.thetas[-nb_active_users:].reshape(-1, 1)  # Drop inactive
 
@@ -85,11 +75,8 @@ class MyModel:
         """
         Load a model's state.
         """
-        self.bias = np.load('model_task_4_bias.npy')
-        print('bias', self.bias)
-        self.diff = np.load('model_task_4_difficulty.npy')
-        self.theta0 = np.load('model_task_4_theta0.npy')
-        
+        self.train_model()
+        self.theta0 = np.mean(self.thetas)        
         self.thetas = None
         self.results = None
         self.logs = defaultdict(list)
@@ -101,6 +88,7 @@ class MyModel:
         self.nb_students, self.nb_items = masked_data.shape
         if self.thetas is None or not len(self.thetas):  # First question
             self.thetas = np.array([self.theta0] * self.nb_students).reshape(-1, 1)
+            
         loss = np.abs(0.5 - proba(self.thetas, self.diff, self.bias)) + (1 - can_query)
         selections = np.argmin(loss, axis=1)
         candidates = Counter()
@@ -115,12 +103,6 @@ class MyModel:
 
         extra_data = pd.DataFrame(np.column_stack((user_ids, item_ids, correctness)), columns=['UserId', 'QuestionId', 'IsCorrect'])
         self.train_model(extra_data)
-        
-        '''self.results = defaultdict(list)
-        for user_id, item_id in zip(user_ids, item_ids):
-            self.results[user_id].append((self.diff[item_id], masked_binary_data[user_id, item_id]))
-        for user_id in range(self.nb_students):
-            self.thetas[user_id] = estimated_theta(self.results[user_id])'''
 
     def predict(self, masked_data, masked_binary_data):
         """

@@ -1,6 +1,3 @@
-"""
-Winning model by tenshow
-"""
 # from irt import MyModel
 from irt_best import MyModel
 
