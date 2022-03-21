@@ -36,7 +36,7 @@ SENSITIVE_ATTR = "timestamp"
 # df["weight"] = 1 / df["weight"]
 # sys.exit(0)
 
-FULL = False
+FULL = True
 X_file = options.X_file
 folder = os.path.dirname(X_file)
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
@@ -65,7 +65,8 @@ y_tests = {}
 FOLD = '50weak'
 
 # folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
-test_folds, valid_folds = load_folds(options)
+# test_folds, valid_folds = load_folds(options)
+test_folds = None
 if test_folds and not FULL:
     print(test_folds)
     for i, filename in enumerate(test_folds):

@@ -62,7 +62,7 @@ def save_weak_folds(full, nb_folds=5):
         np.save('folds/weakest{}fold{}.npy'.format(nb_samples, i), test)
 
 
-def load_folds(folder, options, df):
+def load_folds(folder, options=None, df=None):
     nb_samples = len(df)
     valid_folds = None
     if options.test:
