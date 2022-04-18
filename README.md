@@ -63,7 +63,23 @@ And `data/<dataset>/q_mat.npz` should be a q-matrix under `scipy.sparse` format.
 If you want to compute wins and fails like in PFA or DAS3H,
 you should run `encode_tw.py` instead of this file, with the `--pfa` option for PFA or `--tw` for DAS3H.
 
-## Run
+## Running
+
+### Available datasets
+
+- [Assistments 2009](https://sites.google.com/site/assistmentsdata/home/2009-2010-assistment-data)
+- Our [reformatted version of the Assistments 2009 dataset](https://jiji.cat/weasel2018/data.csv).
+- Berkeley and Castor datasets are private.
+- Datasets ECPE and TIMSS 2003 come from the [CDM package](https://alexanderrobitzsch.github.io/CDM/reference/):
+
+    > install.packages('CDM')
+    > library('CDM')
+    > dim(fraction.subtraction.data)
+    [1] 536  20
+    > dim(data.ecpe$data)
+    [1] 2922   29
+    > dim(data.timss03.G8.su$data)
+    [1] 757  25
 
 ### Encoding data into sparse features (quick start)
 
