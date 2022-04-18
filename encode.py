@@ -66,7 +66,8 @@ def df_to_sparse(df, active_features):
     '''
     X = {}
     X['users'] = onehotize(df['user'])
-    X['items'] = onehotize(df['item'])
+    if 'item' in df.columns:
+        X['items'] = onehotize(df['item'])
     if options.extra:
         for column in options.extra.split(','):
             X[column] = onehotize(df[column])
