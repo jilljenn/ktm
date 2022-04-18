@@ -72,14 +72,16 @@ you should run `encode_tw.py` instead of this file, with the `--pfa` option for 
 - Berkeley and Castor datasets are private.
 - Datasets ECPE and TIMSS 2003 come from the [CDM package](https://alexanderrobitzsch.github.io/CDM/reference/):
 
-    > install.packages('CDM')
-    > library('CDM')
-    > dim(fraction.subtraction.data)
-    [1] 536  20
-    > dim(data.ecpe$data)
-    [1] 2922   29
-    > dim(data.timss03.G8.su$data)
-    [1] 757  25
+```R
+> install.packages('CDM')
+> library('CDM')
+> dim(fraction.subtraction.data)
+[1] 536  20
+> dim(data.ecpe$data)
+[1] 2922   29
+> dim(data.timss03.G8.su$data)
+[1] 757  25
+```
 
 ### Encoding data into sparse features (quick start)
 
