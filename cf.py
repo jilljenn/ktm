@@ -1,5 +1,7 @@
 """
 Collaborative filtering with TF 2.9 Keras.
+Inspiration: https://github.com/jilljenn/ktm/blob/master/dmirt.py
+Confirmation: https://keras.io/examples/structured_data/collaborative_filtering_movielens/
 """
 import logging
 import tensorflow as tf
