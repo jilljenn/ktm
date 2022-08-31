@@ -61,8 +61,8 @@ class CF(tf.keras.Model):
         Ça c'est juste pour que summary et plot_model soient jolis, sinon ça ne sert à rien
         Merci https://github.com/tensorflow/tensorflow/issues/31647#issuecomment-692586409
         '''
-        input_ = tf.keras.Input(shape=(2,))
-        built_model = tf.keras.Model(inputs=[input_], outputs=self.call(x))
+        in_ = tf.keras.Input(shape=(2,))
+        built_model = tf.keras.Model(inputs=[in_], outputs=self.call(in_))
         built_model.summary()
         tf.keras.utils.plot_model(
             built_model, to_file='model-cf.png', show_shapes=True)
@@ -74,7 +74,8 @@ model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
     metrics=[tf.keras.metrics.RootMeanSquaredError()]
 )
-model.fit(train_dataset, validation_data=test_data, epochs=50, batch_size=1000,
-        callbacks=[tf.keras.callbacks.EarlyStopping(patience=1)])
+model.fit(train_dataset, validation_data=test_data, epochs=50,
+        callbacks=[tf.keras.callbacks.EarlyStopping(patience=2)])
+# logging.warning(model.evaluate(*test_data))  # Same result
 
 model.display()
