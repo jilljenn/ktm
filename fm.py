@@ -3,6 +3,7 @@ from sklearn.metrics import roc_auc_score, log_loss
 from eval_metrics import all_metrics
 from scipy.sparse import load_npz, vstack
 from datetime import datetime
+from pathlib import Path
 import pandas as pd
 import pywFM
 import argparse
@@ -22,11 +23,15 @@ parser.add_argument('X_file', type=str, nargs='?')
 parser.add_argument('--iter', type=int, nargs='?', default=20)
 parser.add_argument('--d', type=int, nargs='?', default=20)
 parser.add_argument('--subset', type=int, nargs='?', default=0)
+parser.add_argument('--metrics', type=bool, nargs='?', const=True, 
+    default=False)
+parser.add_argument('--all_folds', type=bool, nargs='?', const=True,
+    default=False)
 options = parser.parse_args()
 
 X_file = options.X_file
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
-folder = os.path.dirname(X_file)
+folder = Path(os.path.dirname(X_file))
 
 X = load_npz(X_file)
 y = np.load(y_file)
@@ -49,6 +54,9 @@ if folds:
         y_trains[i] = y[i_train]
         X_tests[i] = X[i_test]
         y_tests[i] = y[i_test]
+
+        if not options.all_folds:
+            break
 else:
     print('No folds found')
 
@@ -79,6 +87,14 @@ predictions.append({
     'pred': y_pred_test.tolist(),
     'y': y_test.tolist()
 })
+
+if options.metrics:
+    df = pd.read_csv(folder / 'data.csv')
+    df_test = df.iloc[i_test]
+    print('owi', df_test.shape, y_pred_test.shape)
+    df_test['pred'] = y_pred_test
+
+    df_test.to_csv(folder / 'y_us_pred_fm.csv', index=False)
 
 print('Test predict:', y_pred_test)
 print('Test was:', y_test)

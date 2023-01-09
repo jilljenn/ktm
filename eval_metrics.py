@@ -173,7 +173,7 @@ def all_metrics(results, test):
     plt.show()
     
 if __name__ == '__main__':
-    os.chdir('data/assist09')
+    os.chdir('data/assistments09')
     # os.chdir('data/fr_en')
 
     # indices = np.load('folds/weak278607fold0.npy')

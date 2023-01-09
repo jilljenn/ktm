@@ -7,6 +7,7 @@ from scipy.sparse import load_npz
 from datetime import datetime
 from eval_metrics import avgstd
 from dataio import load_folds
+from pathlib import Path
 import argparse
 import numpy as np
 import pandas as pd
@@ -22,6 +23,10 @@ import yaml
 parser = argparse.ArgumentParser(description='Run LR')
 parser.add_argument('X_file', type=str, nargs='?', default='dummy')
 parser.add_argument('--test', type=str, nargs='?', default='')
+parser.add_argument('--metrics', type=bool, nargs='?', const=True, 
+    default=False)
+parser.add_argument('--all_folds', type=bool, nargs='?', const=True,
+    default=False)
 options = parser.parse_args()
 
 
@@ -36,9 +41,9 @@ SENSITIVE_ATTR = "timestamp"
 # df["weight"] = 1 / df["weight"]
 # sys.exit(0)
 
-FULL = True
+FULL = False
 X_file = options.X_file
-folder = os.path.dirname(X_file)
+folder = Path(os.path.dirname(X_file))
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
 
 X = load_npz(X_file).tocsr()
@@ -65,8 +70,8 @@ y_tests = {}
 FOLD = '50weak'
 
 # folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
-# test_folds, valid_folds = load_folds(options)
-test_folds = None
+test_folds, valid_folds = load_folds(folder, options)
+# test_folds = None
 if test_folds and not FULL:
     print(test_folds)
     for i, filename in enumerate(test_folds):
@@ -80,6 +85,9 @@ if test_folds and not FULL:
         # sample_weights[i] = np.array(df["weight"])[i_train]
         print('Weights', i)
         #weights_test[i] = np.array(df["weight"])[i_test]
+
+        if not options.all_folds:
+            break
 elif FULL:
     X_trains[0] = X
     X_tests[0] = X
@@ -101,7 +109,7 @@ predictions = []
 for i in X_trains:
     X_train, X_test, y_train, y_test = (X_trains[i], X_tests[i],
                                         y_trains[i], y_tests[i])
-    model = LogisticRegression(solver='liblinear')  # Has L2 regularization by default
+    model = LogisticRegression()  # Has L2 regularization by default # solver='liblinear'
     dt = time.time()
 
     # weights_train[i] should contain the same value as sample_weights
@@ -130,6 +138,14 @@ for i in X_trains:
                           ('Test', X_test, y_test)]:
         dt = time.time()
         y_pred = model.predict_proba(X)[:, 1]
+
+        if dataset == 'Test' and options.metrics:
+            df = pd.read_csv(folder / 'data.csv')
+            df_test = df.iloc[i_test]
+            print('owi', df_test.shape, y_pred.shape)
+            df_test['pred'] = y_pred
+
+            df_test.to_csv(folder / 'y_us_pred.csv', index=False)
 
         # Store predictions of the fold
         if dataset == 'Test':
