@@ -63,10 +63,16 @@ def save_weak_folds(full, nb_folds=5):
 
 
 def load_folds(folder, options=None, df=None):
+    """
+    Actually returns arrays of filenames, but it would be better to return arrays of indices
+    """
     print(folder)
     if df is None:
         df = pd.read_csv(folder / 'data.csv')
+        print(df.head())
         nb_samples = len(df)
+        test_folds = df.query("fold == 'test'").index.to_numpy()
+        return [test_folds], [test_folds]
     valid_folds = None
     if options.test:
         test_folds = [options.test]

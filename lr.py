@@ -72,10 +72,10 @@ FOLD = '50weak'
 # folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
 test_folds, valid_folds = load_folds(folder, options)
 # test_folds = None
-if test_folds and not FULL:
+if test_folds is not None and not FULL:
     print(test_folds)
-    for i, filename in enumerate(test_folds):
-        i_test = np.load(filename)
+    for i, i_test in enumerate(test_folds):
+        # i_test = np.load(filename)
         print('Fold', i, i_test.shape)
         i_train = list(set(range(nb_samples)) - set(i_test))
         X_trains[i] = X[i_train]
