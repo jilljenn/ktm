@@ -18,6 +18,29 @@ df['group'] = df['country'].map(lambda country: 1 if country in {'US', 'CA', 'GB
 print(df[['user_id', 'country']].drop_duplicates()['country'].value_counts())
 print(df[['user_id', 'country']].drop_duplicates().shape)
 
+def mean_round(l):
+    return np.round(l).mean()
+
+scores = df.groupby(['user_id', 'group'])[['correct', 'pred']].agg(mean_round)
+for cutoff in [75, 80, 85]:
+    scores[f'passes_{cutoff}'] = scores['correct'].map(
+        lambda x: x >= cutoff / 100)
+    counts = scores.groupby(['group', f'passes_{cutoff}']).agg('count')
+    print('counts', counts)
+    print('%', counts / len(scores))
+    for group in [0, 1]:
+        scores_group = scores.query("group == @group")
+        fpr, tpr, threshold = roc_curve(
+            scores_group[f'passes_{cutoff}'], scores_group['pred'])
+        roc_auc = auc(fpr, tpr)
+        plt.plot(fpr, tpr, label=f'Group {group} AUC={roc_auc:.3f}')
+    # plt.boxplot(scores)
+    plt.xlabel('FPR')
+    plt.ylabel('TPR')
+    plt.title(f'AUC for both groups if those who answer correctly {cutoff}% will pass')
+    plt.legend()
+    plt.show()
+
 users = df['user_id'].unique()
 metrics = defaultdict(list)
 for user_id in users:

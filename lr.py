@@ -11,13 +11,13 @@ from pathlib import Path
 import argparse
 import numpy as np
 import pandas as pd
-import os.path
 import math
 import glob
 import time
 import json
 import sys
 import yaml
+import re
 
 
 parser = argparse.ArgumentParser(description='Run LR')
@@ -25,41 +25,33 @@ parser.add_argument('X_file', type=str, nargs='?', default='dummy')
 parser.add_argument('--test', type=str, nargs='?', default='')
 parser.add_argument('--metrics', type=bool, nargs='?', const=True, 
     default=False)
-parser.add_argument('--all_folds', type=bool, nargs='?', const=True,
-    default=False)
+parser.add_argument('--folds', type=str, nargs='?', default='weak')
 options = parser.parse_args()
 
 
-# SENSITIVE_ATTR = "school_id"
-SENSITIVE_ATTR = "timestamp"
-
-# df = pd.read_csv("data/openlab-train/needed.csv")  # Should fix this
-# df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('nunique')
-# df["weight"] = df.groupby(SENSITIVE_ATTR).user_id.transform('count')
-# df["weight"] = 1000 * (df[SENSITIVE_ATTR] % 2 == 1) + 1
-# df["weight"] = 1
-# df["weight"] = 1 / df["weight"]
-# sys.exit(0)
-
 FULL = False
-X_file = options.X_file
-folder = Path(os.path.dirname(X_file))
-y_file = X_file.replace('X', 'y').replace('npz', 'npy')
+X_file = Path(options.X_file)
+folder = X_file.parent
+m = re.match(r'X-(.*).npz', X_file.name)
+suffix = m.group(1)
+y_file = folder / f'y-{suffix}.npy'
+y_pred_file = folder / f'y-{suffix}-pred.csv'
+df = pd.read_csv(folder / 'data.csv')
+
+
+if '_en' in folder.name:
+    df['group'] = df['country'].map(
+        lambda country: 1 if country in {'US', 'CA', 'GB', 'AU'} else 0)
+    group_size = df.query('fold == "train"')['group'].value_counts()
+    print(group_size)
+    df['weight'] = df['group'].map(lambda group: 1 / group_size.loc[group])
+    print(df[['group', 'weight']].head())
 
 X = load_npz(X_file).tocsr()
 nb_samples, _ = X.shape
 y = np.load(y_file).astype(np.int32)
 print(X.shape, y.shape)
 
-# Know number of users
-'''
-with open(os.path.join(folder, 'config.yml')) as f:
-    config = yaml.load(f)
-    X_users = X[:, :config['nb_users']]
-    print(X_users.shape)
-    assert all(X_users.sum(axis=1) == 1)
-    # sys.exit(0)
-'''
 
 # Are folds fixed already?
 X_trains = {}
@@ -69,40 +61,13 @@ X_tests = {}
 y_tests = {}
 FOLD = '50weak'
 
-# folds = glob.glob(os.path.join(folder, 'folds/{}fold*.npy'.format(nb_samples)))
-test_folds, valid_folds = load_folds(folder, options)
-# test_folds = None
-if test_folds is not None and not FULL:
-    print(test_folds)
-    for i, i_test in enumerate(test_folds):
-        # i_test = np.load(filename)
-        print('Fold', i, i_test.shape)
-        i_train = list(set(range(nb_samples)) - set(i_test))
-        X_trains[i] = X[i_train]
-        y_trains[i] = y[i_train]
-        X_tests[i] = X[i_test]
-        y_tests[i] = y[i_test]
-        # sample_weights[i] = np.array(df["weight"])[i_train]
-        print('Weights', i)
-        #weights_test[i] = np.array(df["weight"])[i_test]
+for i, (i_train, i_test) in enumerate(load_folds(folder, options, df)):
+    print('Fold', i_test.shape)
+    X_trains[i] = X[i_train]
+    y_trains[i] = y[i_train]
+    X_tests[i] = X[i_test]
+    y_tests[i] = y[i_test]
 
-        if not options.all_folds:
-            break
-elif FULL:
-    X_trains[0] = X
-    X_tests[0] = X
-    y_trains[0] = y
-    y_tests[0] = y
-    # sample_weights[0] = np.array(df["weight"])
-else:
-    print('No folds so train test split')
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
-                                                        shuffle=False)
-    X_trains[0] = X_train
-    X_tests[0] = X_test
-    y_trains[0] = y_train
-    y_tests[0] = y_test
-    
 
 results = defaultdict(list)
 predictions = []
@@ -112,25 +77,10 @@ for i in X_trains:
     model = LogisticRegression()  # Has L2 regularization by default # solver='liblinear'
     dt = time.time()
 
-    # weights_train[i] should contain the same value as sample_weights
-
     nb_samples = len(y_train)
-    # nb_users = config['nb_users']
-    # nb_groups = df[SENSITIVE_ATTR].nunique()
     
-    """
-    X_train_users = X_train[:, :config['nb_users']]
-    nb_samples_per_user = X_train_users.sum(axis=0).A1
-    nb_samples_per_user[nb_samples_per_user == 0] = 1
-    print(X_train_users.shape)
-    print(nb_samples_per_user.shape)
-    print((X_train_users @ (1 / nb_samples_per_user)).shape)
-    # sample_weights = np.ones(nb_samples)
-    print(nb_samples / nb_users / nb_samples_per_user)
-    sample_weights = X_train_users @ (nb_samples / nb_users / nb_samples_per_user)
-    """
-    
-    model.fit(X_train, y_train)#nb_samples / nb_groups * sample_weights[i])
+    # , df.query('fold != "test"')['weight']
+    model.fit(X_train, y_train)
 
     print('[time] Training', time.time() - dt, 's')
 
@@ -140,12 +90,11 @@ for i in X_trains:
         y_pred = model.predict_proba(X)[:, 1]
 
         if dataset == 'Test' and options.metrics:
-            df = pd.read_csv(folder / 'data.csv')
-            df_test = df.iloc[i_test]
-            print('owi', df_test.shape, y_pred.shape)
-            df_test['pred'] = y_pred
 
-            df_test.to_csv(folder / 'y_us_pred.csv', index=False)
+            df_test = df.iloc[i_test]
+            assert len(df_test) == len(y_pred)
+            df_test['pred'] = y_pred
+            df_test.to_csv(y_pred_file, index=False)
 
         # Store predictions of the fold
         if dataset == 'Test':
@@ -172,11 +121,11 @@ for i in X_trains:
             print(dataset, metric, 'on fold {}:'.format(i), value)
         print('[time]', time.time() - dt, 's')
 
-    np.save(os.path.join(folder, 'coef{}.npy'.format(i)), model.coef_)
+    np.save(folder / f'coef{i}.npy', model.coef_)
 
 print('# Final results')
 for metric in results:
-    print('{}: {}'.format(metric, avgstd(results[metric])))
+    print(f'{metric}: {avgstd(results[metric])}')
 
 iso_date = datetime.now().isoformat()
 saved_results = {
@@ -184,11 +133,5 @@ saved_results = {
     'model': 'LR',
     'folds': FOLD
 }
-with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
+with open(folder / f'results-{iso_date}.json', 'w') as f:
     json.dump(saved_results, f)
-
-# df = pd.read_csv(os.path.join(folder, 'needed.csv'))
-# indices = np.load(test_folds[0])
-# test = df.iloc[indices]
-
-# all_metrics(saved_results, test)

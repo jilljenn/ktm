@@ -57,9 +57,8 @@ def save_folds(full, nb_folds=5):
 def save_weak_folds(full, nb_folds=5):
     nb_samples = len(full)
     all_samples = range(nb_samples)
-    kfold = KFold(nb_folds, shuffle=True)
-    for i, (train, test) in enumerate(kfold.split(full)):
-        np.save('folds/weakest{}fold{}.npy'.format(nb_samples, i), test)
+    kfold = KFold(nb_folds, shuffle=True, random_state=42)
+    return kfold.split(full)
 
 
 def load_folds(folder, options=None, df=None):
@@ -67,26 +66,14 @@ def load_folds(folder, options=None, df=None):
     Actually returns arrays of filenames, but it would be better to return arrays of indices
     """
     print(folder)
-    if df is None:
-        df = pd.read_csv(folder / 'data.csv')
+    if df is not None and 'fold' in df.columns:
         print(df.head())
         nb_samples = len(df)
         test_folds = df.query("fold == 'test'").index.to_numpy()
         return [test_folds], [test_folds]
-    valid_folds = None
-    if options.test:
-        test_folds = [options.test]
+    print('No folds')
+
+    if options.folds == 'weak':
+        return save_weak_folds(df)
     else:
-        test_folds = sorted((folder / 'folds').glob(f'60weak{nb_samples}fold*.npy'))
-        valid_folds = sorted((folder / 'folds').glob(f'36weak{nb_samples}valid*.npy'))
-    if not test_folds:
-        print('No folds')
-        test_folds, valid_folds = save_folds(df)
-        # Or, for example, weak generalization:
-        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
-        #                                                     shuffle=False)
-    if not valid_folds:
-        print('No valid_folds')
-        if test_folds:
-            valid_folds = test_folds
-    return test_folds, valid_folds
+        return save_folds(df)
