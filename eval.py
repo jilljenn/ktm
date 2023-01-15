@@ -7,9 +7,13 @@ from collections import Counter, defaultdict
 import logging
 from eval_metrics import avgstd
 import numpy as np
+import argparse
 
+parser = argparse.ArgumentParser(description='Eval predictions')
+parser.add_argument('pred_file', type=str, nargs='?')
+options = parser.parse_args()
 
-df = pd.read_csv('data/es_en/y_us_pred.csv')
+df = pd.read_csv(options.pred_file)
 print('Overall AUC', roc_auc_score(df['correct'], df['pred']))
 print('Overall ACC', accuracy_score(df['correct'], df['pred'].round()))
 print('Overall NDCG', ndcg_score([df['correct']], [df['pred']]))

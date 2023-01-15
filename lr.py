@@ -23,7 +23,7 @@ parser.add_argument('--folds', type=str, nargs='?', default='weak')
 options = parser.parse_args()
 
 
-df, X_file, folder, y_file, y_pred_file = get_paths(options)
+df, X_file, folder, y_file, y_pred_file = get_paths(options, 'LR')
 
 
 if '_en' in folder.name:

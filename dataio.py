@@ -20,13 +20,13 @@ VALID = 0.36  # Valid is 40% of train (= 24%), so starts from 36%
 TEST = 0.6    # Test is 40%, so from 60%
 
 
-def get_paths(options):
+def get_paths(options, model_name):
     X_file = Path(options.X_file)
     folder = X_file.parent
     m = re.match(r'X-(.*).npz', X_file.name)
     suffix = m.group(1)
     y_file = folder / f'y-{suffix}.npy'
-    y_pred_file = folder / f'y-{suffix}-pred.csv'
+    y_pred_file = folder / f'y-{suffix}-{model_name}-pred.csv'
     df = pd.read_csv(folder / 'data.csv')
     return df, X_file, folder, y_file, y_pred_file
 
@@ -79,8 +79,9 @@ def load_folds(folder, options=None, df=None):
     if df is not None and 'fold' in df.columns:
         print(df.head())
         nb_samples = len(df)
-        test_folds = df.query("fold == 'test'").index.to_numpy()
-        return [test_folds], [test_folds]
+        i_train = df.query("fold != 'test'").index.to_numpy()
+        i_test = df.query("fold == 'test'").index.to_numpy()
+        return [(i_train, i_test)]
     print('No folds')
 
     if options.folds == 'weak':

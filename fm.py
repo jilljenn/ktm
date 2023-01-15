@@ -26,12 +26,8 @@ parser.add_argument('--metrics', type=bool, nargs='?', const=True,
 parser.add_argument('--folds', type=str, nargs='?', default='weak')
 options = parser.parse_args()
 
-X_file = options.X_file
-y_file = X_file.replace('X', 'y').replace('npz', 'npy')
-folder = Path(os.path.dirname(X_file))
 
-
-df, X_file, folder, y_file, y_pred_file = get_paths(options)
+df, X_file, folder, y_file, y_pred_file = get_paths(options, 'FM')
 X_sp = load_npz(X_file).tocsr()
 nb_samples, _ = X_sp.shape
 y = np.load(y_file).astype(np.int32)
