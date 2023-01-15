@@ -1,73 +1,41 @@
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_auc_score, log_loss
-from eval_metrics import all_metrics
-from scipy.sparse import load_npz, vstack
+"""
+Factorization machines on sparse features
+"""
+import argparse
 from datetime import datetime
 from pathlib import Path
-import pandas as pd
-import pywFM
-import argparse
-import numpy as np
-import os
-import sys
-import glob
 import json
+import os
+from sklearn.metrics import roc_auc_score, log_loss
+from scipy.sparse import load_npz
+import pywFM
+import numpy as np
+from dataio import get_paths, load_folds
 
 
 # Location of libFM's compiled binary file
-os.environ['LIBFM_PATH'] = os.path.join(os.path.dirname(__file__),
-                                        'libfm/bin/')
+os.environ['LIBFM_PATH'] = str(Path('libfm/bin').absolute()) + '/'
 
 parser = argparse.ArgumentParser(description='Run FM')
 parser.add_argument('X_file', type=str, nargs='?')
 parser.add_argument('--iter', type=int, nargs='?', default=20)
 parser.add_argument('--d', type=int, nargs='?', default=20)
 parser.add_argument('--subset', type=int, nargs='?', default=0)
-parser.add_argument('--metrics', type=bool, nargs='?', const=True, 
+parser.add_argument('--metrics', type=bool, nargs='?', const=True,
     default=False)
-parser.add_argument('--all_folds', type=bool, nargs='?', const=True,
-    default=False)
+parser.add_argument('--folds', type=str, nargs='?', default='weak')
 options = parser.parse_args()
 
 X_file = options.X_file
 y_file = X_file.replace('X', 'y').replace('npz', 'npy')
 folder = Path(os.path.dirname(X_file))
 
-X = load_npz(X_file)
-y = np.load(y_file)
-nb_samples = len(y)
 
-# Are folds fixed already?
-X_trains = {}
-y_trains = {}
-X_tests = {}
-y_tests = {}
-FOLD = 'strong'
-folds = glob.glob(os.path.join(folder, 'folds/60weak{}fold*.npy'.format(nb_samples)))
+df, X_file, folder, y_file, y_pred_file = get_paths(options)
+X_sp = load_npz(X_file).tocsr()
+nb_samples, _ = X_sp.shape
+y = np.load(y_file).astype(np.int32)
 
-if folds:
-    for i, filename in enumerate(folds):
-        i_test = np.load(filename)
-        print('Fold', i, i_test.shape)
-        i_train = list(set(range(nb_samples)) - set(i_test))
-        X_trains[i] = X[i_train]
-        y_trains[i] = y[i_train]
-        X_tests[i] = X[i_test]
-        y_tests[i] = y[i_test]
-
-        if not options.all_folds:
-            break
-else:
-    print('No folds found')
-
-
-if X_trains:
-    X_train, X_test, y_train, y_test = (X_trains[0], X_tests[0],
-                                        y_trains[0], y_tests[0])
-    print(X_train.shape, X_test.shape)
-else:
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
-                                                        shuffle=False)
 
 predictions = []
 params = {
@@ -78,47 +46,41 @@ params = {
     'k2': options.d
 }
 fm = pywFM.FM(**params)
-model = fm.run(X_train, y_train, X_test, y_test)
-y_pred_test = np.array(model.predictions)
-np.save(os.path.join(folder, 'y_pred{}.npy'.format(options.subset)), y_pred_test)
+for i, (i_train, i_test) in enumerate(load_folds(folder, options, df)):
+    X_train, X_test, y_train, y_test = (X_sp[i_train], X_sp[i_test],
+                                        y[i_train], y[i_test])
 
-predictions.append({
-    'fold': 0,
-    'pred': y_pred_test.tolist(),
-    'y': y_test.tolist()
-})
+    model = fm.run(X_train, y_train, X_test, y_test)
+    y_pred_test = np.array(model.predictions)
 
-if options.metrics:
-    df = pd.read_csv(folder / 'data.csv')
-    df_test = df.iloc[i_test]
-    print('owi', df_test.shape, y_pred_test.shape)
-    df_test['pred'] = y_pred_test
+    predictions.append({
+        'fold': 0,
+        'pred': y_pred_test.tolist(),
+        'y': y_test.tolist()
+    })
 
-    df_test.to_csv(folder / 'y_us_pred_fm.csv', index=False)
+    if options.metrics:
+        df_test = df.iloc[i_test]
+        assert len(df_test) == len(y_pred_test)
+        df_test['pred'] = y_pred_test
+        df_test.to_csv(y_pred_file, index=False)
 
-print('Test predict:', y_pred_test)
-print('Test was:', y_test)
-print('Test ACC:', np.mean(y_test == np.round(y_pred_test)))
-try:
-    print('Test AUC', roc_auc_score(y_test, y_pred_test))
-    print('Test NLL', log_loss(y_test, y_pred_test))
-except ValueError:
-    pass
+    print('Test predict:', y_pred_test)
+    print('Test was:', y_test)
+    print('Test ACC:', np.mean(y_test == np.round(y_pred_test)))
+    try:
+        print('Test AUC', roc_auc_score(y_test, y_pred_test))
+        print('Test NLL', log_loss(y_test, y_pred_test))
+    except ValueError:
+        pass
 
-iso_date = datetime.now().isoformat()
-np.save(os.path.join(folder, 'w.npy'), np.array(model.weights))
-np.save(os.path.join(folder, 'V.npy'), model.pairwise_interactions)
-saved_results = {
-    'predictions': predictions,
-    'model': vars(options),
-    'mu': model.global_bias,
-    'folds': FOLD
-}
-with open(os.path.join(folder, 'results-{}.json'.format(iso_date)), 'w') as f:
-    json.dump(saved_results, f)
-
-df = pd.read_csv(os.path.join(folder, 'needed.csv'))
-indices = np.load(folds[0])
-test = df.iloc[indices]
-    
-all_metrics(saved_results, test)
+    iso_date = datetime.now().isoformat()
+    np.save(folder / 'w.npy', np.array(model.weights))
+    np.save(folder / 'V.npy', model.pairwise_interactions)
+    saved_results = {
+        'predictions': predictions,
+        'model': vars(options),
+        'mu': model.global_bias,
+    }
+    with open(folder / f'results-{iso_date}.json', 'w') as f:
+        json.dump(saved_results, f)

@@ -1,10 +1,9 @@
+from pathlib import Path
+import random
+import re
 from sklearn.model_selection import KFold
 import pandas as pd
 import numpy as np
-import random
-import glob
-import os.path
-
 
 """
 K-fold on users.
@@ -19,6 +18,17 @@ tr tr tr va va va te te te te
 """
 VALID = 0.36  # Valid is 40% of train (= 24%), so starts from 36%
 TEST = 0.6    # Test is 40%, so from 60%
+
+
+def get_paths(options):
+    X_file = Path(options.X_file)
+    folder = X_file.parent
+    m = re.match(r'X-(.*).npz', X_file.name)
+    suffix = m.group(1)
+    y_file = folder / f'y-{suffix}.npy'
+    y_pred_file = folder / f'y-{suffix}-pred.csv'
+    df = pd.read_csv(folder / 'data.csv')
+    return df, X_file, folder, y_file, y_pred_file
 
 
 def save_folds(full, nb_folds=5):
