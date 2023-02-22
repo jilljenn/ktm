@@ -1,23 +1,12 @@
+"""
+If options.folds is 'weak', the k-fold is performed on samples.
+Otherwise, it is performed on users.
+"""
 from pathlib import Path
-import random
 import re
 from sklearn.model_selection import KFold
 import pandas as pd
 import numpy as np
-
-"""
-K-fold on users.
-First K - 1 folds are fully for train.
-On the K-th fold of test users, this represents for example 40% for test:
-
-0 %      36 %     60 %       100 %
-tr tr tr va va va te te te te
--------- -------- -----------
- TRAIN    VALID      TEST
-
-"""
-VALID = 0.36  # Valid is 40% of train (= 24%), so starts from 36%
-TEST = 0.6    # Test is 40%, so from 60%
 
 
 def get_paths(options, model_name):
@@ -32,59 +21,41 @@ def get_paths(options, model_name):
 
 
 def save_folds(full, nb_folds=5):
+    """
+    Note: can be improved with validation sets besides the test sets
+    """
     if 'timestamp' not in full.columns:
         full['timestamp'] = np.zeros(len(full))
-    nb_samples = len(full)
-    all_users = full['user_id'].unique()
-    random.shuffle(all_users)
-    fold_size = len(all_users) // nb_folds
-    everything = []
-    valid_folds = []
-    test_folds = []
-    for i in range(nb_folds):
-        upper_bound = (i + 1) * fold_size if i < nb_folds - 1 else len(all_users)
-        ids_of_fold = set(all_users[i * fold_size:upper_bound])
-        test_fold = []
-        valid_fold = []
-        for user_id in ids_of_fold:
-            fold = full.query('user_id == @user_id').sort_values('timestamp').index
-            everything += list(fold)
-            n_samples_user = len(fold)
-            valid_fold.extend(fold[round(VALID * n_samples_user):round(TEST * n_samples_user)])
-            test_fold.extend(fold[round(TEST * n_samples_user):])
-        valid_filename = 'folds/{}weak{}valid{}.npy'.format(round(100 * VALID), nb_samples, i)
-        test_filename = 'folds/{}weak{}fold{}.npy'.format(round(100 * TEST), nb_samples, i)
-        if not os.path.exists('folds'):
-            os.makedirs('folds')
-        np.save(valid_filename, valid_fold)
-        np.save(test_filename, test_fold)
-        valid_folds.append(valid_filename)
-        test_folds.append(test_filename)
-    assert sorted(everything) == list(range(nb_samples))
-    return test_folds, valid_folds
+    all_users = full['user'].unique()
+    folds = []
+    kfold = KFold(nb_folds, shuffle=True, random_state=42)
+    for train_users, test_users in kfold.split(all_users):
+        folds.append((
+            full.query('user in @train_users').sort_values(
+                'timestamp').index.to_numpy(),
+            full.query('user in @test_users').sort_values(
+                'timestamp').index.to_numpy()
+        ))
+    return folds
 
 
 def save_weak_folds(full, nb_folds=5):
-    nb_samples = len(full)
-    all_samples = range(nb_samples)
     kfold = KFold(nb_folds, shuffle=True, random_state=42)
     return kfold.split(full)
 
 
-def load_folds(folder, options=None, df=None):
+def load_folds(options=None, df=None):
     """
-    Actually returns arrays of filenames, but it would be better to return arrays of indices
+    Either folds are specified in the CSV file or they are generated
+    according to whether options.folds is 'weak' or not.
+    Returns pairs of arrays of train/test indices.
     """
-    print(folder)
     if df is not None and 'fold' in df.columns:
-        print(df.head())
-        nb_samples = len(df)
         i_train = df.query("fold != 'test'").index.to_numpy()
         i_test = df.query("fold == 'test'").index.to_numpy()
         return [(i_train, i_test)]
-    print('No folds')
+    print('No folds specified in CSV file')
 
     if options.folds == 'weak':
         return save_weak_folds(df)
-    else:
-        return save_folds(df)
+    return save_folds(df)

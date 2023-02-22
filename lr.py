@@ -41,7 +41,7 @@ y_np = np.load(y_file).astype(np.int32)
 
 results = defaultdict(list)
 predictions = []
-for i, (i_train, i_test) in enumerate(load_folds(folder, options, df)):
+for i, (i_train, i_test) in enumerate(load_folds(options, df)):
     X_train, X_test, y_train, y_test = (X_sp[i_train], X_sp[i_test],
                                         y_np[i_train], y_np[i_test])
     model = LogisticRegression(solver='liblinear')
@@ -93,6 +93,7 @@ for i, (i_train, i_test) in enumerate(load_folds(folder, options, df)):
         print('[time]', time.time() - dt, 's')
 
     np.save(folder / f'coef{i}.npy', model.coef_)
+    break
 
 print('# Final results')
 for metric in results:

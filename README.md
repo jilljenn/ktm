@@ -1,4 +1,3 @@
-[![Build Status](https://travis-ci.org/jilljenn/ktm.svg?branch=master)](https://travis-ci.org/jilljenn/ktm)
 [![Codecov](https://img.shields.io/codecov/c/github/jilljenn/ktm.svg)](https://codecov.io/gh/jilljenn/ktm/)
 
 # Knowledge Tracing Machines
@@ -17,13 +16,13 @@ Comments are always welcome!
       Url = {https://arxiv.org/abs/1811.03388},
       Year = 2019}
 
-Authors: [Jill-Jênn Vie](https://jilljenn.github.io), [Hisashi Kashima](https://hkashima.github.io/index_e.html)
+Authors: [Jill-Jênn Vie](https://jjv.ie), [Hisashi Kashima](https://hkashima.github.io/index_e.html)
 
 ## Follow our tutorial
 
 Presented at the [Optimizing Human Learning](https://humanlearn.io) workshop in Kingston, Jamaica on June 4, 2019.
 
-Slides from the tutorial are available [here](doc/tuto.pdf). A notebook on Colab will be available "soon", but the priority is to have tests in this repository.
+Slides from the tutorial are available [here](doc/tuto.pdf). A notebook on Colab will be available "soon".
 
 The tutorial makes you play with the models to assess **weak generalization**. To assess **strong generalization** and reproduce the experiments of the paper, you want to look at how folds are created in [dataio.py](https://github.com/jilljenn/ktm/blob/master/dataio.py#L12).
 
@@ -121,6 +120,8 @@ For factorization machines of size *d* = 5:
     python fm.py --d 5 data/dummy/X-swf.npz
 	# Will save weights in w.npy and V.npy
 
+The following code does not work if you don't have user_id as column in CSV file.
+
 NEW! For an online MIRT model:
 
     python omirt.py --d 0 data/assist09/needed.csv  # Will load LR: coef0.npy
@@ -140,6 +141,8 @@ It will also create a model.png file with the architecture (here just IRT with L
 ## Results
 
 ### Weak generalization
+
+Those numbers may change according to your random state seed.
 
 On the Assistments 2009 dataset:
 

@@ -4,6 +4,7 @@ __pycache__
 *.bbl
 *.bcf
 *.blg
+*.json
 *.log
 *.nav
 *.out

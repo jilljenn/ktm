@@ -42,7 +42,7 @@ params = {
     'k2': options.d
 }
 fm = pywFM.FM(**params)
-for i, (i_train, i_test) in enumerate(load_folds(folder, options, df)):
+for i, (i_train, i_test) in enumerate(load_folds(options, df)):
     X_train, X_test, y_train, y_test = (X_sp[i_train], X_sp[i_test],
                                         y[i_train], y[i_test])
 
@@ -80,3 +80,4 @@ for i, (i_train, i_test) in enumerate(load_folds(folder, options, df)):
     }
     with open(folder / f'results-{iso_date}.json', 'w') as f:
         json.dump(saved_results, f)
+    break
