@@ -24,15 +24,13 @@ See paper: https://arxiv.org/abs/1811.03388
 
 Authors: Jill-Jênn Vie, 2020
 """
-from scipy.sparse import coo_matrix, save_npz, load_npz, hstack
-from collections import Counter
-import pandas as pd
-import numpy as np
 import argparse
 import logging
-import yaml
 import os
-import sys
+from collections import Counter
+from scipy.sparse import coo_matrix, save_npz, load_npz, hstack
+import pandas as pd
+import numpy as np
 
 
 parser = argparse.ArgumentParser(description='Encode datasets')
@@ -88,12 +86,11 @@ def df_to_sparse(df, active_features):
 
 df = pd.read_csv('data.csv')
 X, y = df_to_sparse(df, active_features)
-print(df.head())
+logging.warning(df.head())
 if options.dataset == 'dummy':
     print(X.todense())
 
-save_npz('X-{:s}.npz'.format(features_suffix), X)
-np.save('y-{:s}.npy'.format(features_suffix), y)
-print('Successfully created X-{:s}.npz and y-{:s}.npy '
-      'in data/{} folder'.format(
-          features_suffix, features_suffix, options.dataset))
+save_npz(f'X-{features_suffix}.npz', X)
+np.save(f'y-{features_suffix}.npy', y)
+logging.warning('Successfully created X-%s.npz and y-%s.npy in data/%s folder',
+    features_suffix, features_suffix, options.dataset)

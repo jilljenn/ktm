@@ -3,4 +3,4 @@ scipy
 scikit-learn
 pandas
 pywFM
-PyYAML
+matplotlib
