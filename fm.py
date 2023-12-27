@@ -12,6 +12,7 @@ import pywFM
 import numpy as np
 from dataio import get_paths, load_folds
 import sklearn
+import scipy
 
 
 # Location of libFM's compiled binary file
