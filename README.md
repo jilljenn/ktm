@@ -5,13 +5,16 @@
 - Presented at the AAAI 2019 conference in Honolulu, Hawaii on January 27, 2019 [[arXiv]](https://arxiv.org/abs/1811.03388) [[slides]](https://jiji.cat/slides/aaai2019-ktm-slides.pdf).
 - Applied in the [Best Paper Award](https://arxiv.org/abs/1905.06873) of the EDM 2019 conference in Montreal, Canada on July 2, 2019.
 
-    @inproceedings{Vie2019,
-      Author = {{Vie}, Jill-J{\^e}nn and {Kashima}, Hisashi},
-      Booktitle = {Proceedings of the 33th {AAAI} Conference on Artificial Intelligence},
-      Title = {{Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing}},
-      Pages = {750--757},
-      Url = {https://arxiv.org/abs/1811.03388},
-      Year = 2019}
+```bibtex
+@inproceedings{Vie2019,
+  Author = {{Vie}, Jill-J{\^e}nn and {Kashima}, Hisashi},
+  Booktitle = {Proceedings of the 33th {AAAI} Conference on Artificial Intelligence},
+  Title = {{Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing}},
+  Pages = {750--757},
+  Url = {https://arxiv.org/abs/1811.03388},
+  Year = 2019
+}
+```
 
 Authors: [Jill-Jênn Vie](https://jjv.ie), [Hisashi Kashima](https://hkashima.github.io/index_e.html)
 
@@ -63,7 +66,7 @@ you should run `encode_tw.py` instead of this file, with the `--pfa` option for 
 
 ### NEW! 2024 update: efficient scikit-learn implementation
 
-Are you excited? If so, check [sktm.py].
+Are you excited? If so, check <sktm.py>.
 
 ```python
 pipe = Pipeline([
