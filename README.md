@@ -2,11 +2,8 @@
 
 # Knowledge Tracing Machines
 
-- Presented at the AAAI 2019 conference in Honolulu, Hawaii on January 27, 2019.
+- Presented at the AAAI 2019 conference in Honolulu, Hawaii on January 27, 2019 [[arXiv]](https://arxiv.org/abs/1811.03388) [[slides]](https://jiji.cat/slides/aaai2019-ktm-slides.pdf).
 - Applied in the [Best Paper Award](https://arxiv.org/abs/1905.06873) of the EDM 2019 conference in Montreal, Canada on July 2, 2019.
-
-See our article: [Knowledge Tracing Machines: Factorization Machines for Knowledge Tracing [pdf]](https://arxiv.org/abs/1811.03388) [[slides]](http://jiji.cat/slides/aaai2019-ktm-slides.pdf).  
-Comments are always welcome!
 
     @inproceedings{Vie2019,
       Author = {{Vie}, Jill-J{\^e}nn and {Kashima}, Hisashi},
@@ -22,9 +19,9 @@ Authors: [Jill-Jênn Vie](https://jjv.ie), [Hisashi Kashima](https://hkashima.gi
 
 Presented at the [Optimizing Human Learning](https://humanlearn.io) workshop in Kingston, Jamaica on June 4, 2019.
 
-Slides from the tutorial are available [here](doc/tuto.pdf). A notebook on Colab will be available "soon".
+Slides from the tutorial are available [here](https://jjv.ie/slides/tuto.pdf). A Jupyter notebook will be available "soon" on Binder.
 
-The tutorial makes you play with the models to assess **weak generalization**. To assess **strong generalization** and reproduce the experiments of the paper, you want to look at how folds are created in [dataio.py](https://github.com/jilljenn/ktm/blob/master/dataio.py#L12).
+The tutorial makes you play with the models to assess **weak generalization**. To assess **strong generalization** and reproduce the experiments of the paper, you may want to use scikit-learn's [GroupShuffleSplit](https://scikit-learn.org/stable/modules/cross_validation.html#group-shuffle-split).
 
 ## Install
 
@@ -63,6 +60,35 @@ If you want to compute wins and fails like in PFA or DAS3H,
 you should run `encode_tw.py` instead of this file, with the `--pfa` option for PFA or `--tw` for DAS3H.
 
 ## Running
+
+### NEW! 2024 update: efficient scikit-learn implementation
+
+Are you excited? If so, check [sktm.py].
+
+```python
+pipe = Pipeline([
+    ('onehot', OneHotEncoder(handle_unknown='ignore')),
+    ('lr', LogisticRegression(solver='liblinear'))
+])
+
+# IRT
+pipe.fit(df_train[['user', 'item']], df_train['correct'])
+print(pipe.predict_proba(df_test[['user', 'item']]))
+
+# PFA
+pipe.fit(df_train[['skill', 'wins', 'fails']], df_train['correct'])
+print(pipe.predict_proba(df_test[['skill', 'wins', 'fails']]))
+```
+
+sktm contains efficient parallel cross validation over 5 folds, stratified by group (i.e. strong generalization).
+
+Usage:
+
+    mkdir data/assistments09
+    wget https://jiji.cat/weasel2018/data.csv -P data/assistments09
+    python sktm.py --dataset assistments09 --model (irt|pfa|sktm)  # Choose which model
+
+For factorization machines, replace `LogisticRegression` with `from fm import FMClassifier`.
 
 ### Available datasets
 
