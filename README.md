@@ -89,7 +89,7 @@ Usage:
 
     mkdir data/assistments09
     wget https://jiji.cat/weasel2018/data.csv -P data/assistments09
-    python sktm.py --dataset assistments09 --model (irt|pfa|sktm)  # Choose which model
+    python sktm.py data/assistments09/data.csv --model (irt|pfa|sktm)  # Choose which model
 
 For factorization machines, replace `LogisticRegression` with `from fm import FMClassifier`.
 

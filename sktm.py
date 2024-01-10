@@ -10,12 +10,13 @@ import pandas as pd
 
 
 parser = argparse.ArgumentParser(description='Run simple KTM')
-parser.add_argument('--dataset', type=str, nargs='?', default='dummy')
+parser.add_argument(
+    'csv_file', type=str, nargs='?', default='data/dummy/data.csv')
 parser.add_argument('--model', type=str, nargs='?', default='iswf')
 options = parser.parse_args()
 
 
-df = pd.read_csv(f'data/{options.dataset}/data.csv')
+df = pd.read_csv(options.csv_file)
 pipe = Pipeline([
     ('onehot', OneHotEncoder(handle_unknown='ignore')),
     ('lr', LogisticRegression(solver='liblinear'))
