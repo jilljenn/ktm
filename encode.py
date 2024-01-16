@@ -15,20 +15,21 @@ data/<dataset>/data.csv just needs to contain:
 user, item, correct
 and data/<dataset>/q_mat.npz should be a q-matrix under scipy.sparse format.
 If you want to compute wins and fails like in PFA,
-you should run encode_tw.py instead of this file, with the --pfa option.
+you should run encode.py with --skills --wins --fails.
+It is a bit slow for the moment.
 
 Note: IDs for users and items need not be disjoint,
 as we use hstack below to concatenate sparse matrices.
 
 See paper: https://arxiv.org/abs/1811.03388
 
-Authors: Jill-Jênn Vie, 2020
+Authors: Jill-Jênn Vie, 2024
 """
 import argparse
 import logging
 import os
 from collections import Counter
-from scipy.sparse import coo_matrix, save_npz, load_npz, hstack
+from scipy.sparse import coo_matrix, save_npz, load_npz, hstack, vstack
 import pandas as pd
 import numpy as np
 
@@ -75,9 +76,25 @@ def df_to_sparse(df, active_features):
         X['wins'].data = df['wins']
         X['fails'] = X['skills'].copy()
         X['fails'].data = df['fails']
-    elif os.path.isfile('q_mat.npz'):
+    elif os.path.isfile('q_mat.npz'):  # Have to recompute counts
         q_matrix = load_npz('q_mat.npz')
-        X['skills'] = q_matrix[df['item']]
+        _, nb_skills = q_matrix.shape
+        df['item0'] = np.unique(df['item'], return_inverse=True)[1]
+        X['skills'] = q_matrix[df['item0']]
+        if 'wins' in active_features:
+            wins_rows = []
+            fails_rows = []
+            wins = np.zeros(nb_skills)
+            fails = np.zeros(nb_skills)
+            for item_id, correct in zip(df['item0'], df['correct']):
+                wins_rows.append(q_matrix[item_id].multiply(wins))
+                fails_rows.append(q_matrix[item_id].multiply(fails))
+                if correct:
+                    wins += q_matrix[item_id].toarray().reshape(-1)
+                else:
+                    fails += q_matrix[item_id].toarray().reshape(-1)
+            X['wins'] = vstack(wins_rows)
+            X['fails'] = vstack(fails_rows)
         print('nb skills', Counter(X['skills'].sum(axis=1).A1))
     X_train = hstack([X[agent] for agent in active_features]).tocsr()
     y_train = df['correct'].values
