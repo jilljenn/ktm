@@ -71,6 +71,7 @@ for i, (i_train, i_test) in enumerate(load_folds(options, df)):
         if dataset == 'Test':
             predictions.append({
                 'fold': i,
+                'i_test': i_test.tolist(),
                 'pred': y_pred.tolist(),
                 'y': y.tolist()
             })

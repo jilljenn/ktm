@@ -1,5 +1,7 @@
 """
 Efficient implementation of knowledge tracing machines using scikit-learn.
+
+Currently: will not work on wins and fails > 1.
 """
 import argparse
 from sklearn.pipeline import Pipeline
@@ -19,7 +21,7 @@ options = parser.parse_args()
 df = pd.read_csv(options.csv_file)
 pipe = Pipeline([
     ('onehot', OneHotEncoder(handle_unknown='ignore')),
-    ('lr', LogisticRegression(solver='liblinear'))
+    ('lr', LogisticRegression(solver='liblinear', C=1e-1, max_iter=300))
 ])
 
 
@@ -54,3 +56,23 @@ for i_train, i_test in cv.split(df, groups=df['user']):
     pipe.fit(df_train[['skill', 'wins', 'fails']], df_train['correct'])
     print(pipe.predict_proba(df_test[['skill', 'wins', 'fails']])[:, 1])
     break
+
+print('Full training PFA')
+pipe.fit(df[['skill', 'wins', 'fails']], df['correct'])
+print(pipe['lr'].coef_)
+
+print('Full training UISWF')
+pipe.fit(df[['user', 'item', 'skill', 'wins', 'fails']], df['correct'])
+
+# Test for dummy dataset
+coef = pipe['lr'].coef_[0]
+print(coef.shape)
+print(coef)
+print(df.nunique())
+nb = [5, 2, 2, 1, 2]
+print(sum(nb))
+print('Users', coef[:5])
+print('Items', coef[5:7])
+print('Skills', coef[7:9])
+print('Wins', coef[9:10])
+print('Fails', coef[10:12])
